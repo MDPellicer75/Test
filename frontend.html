@@ -178,6 +178,8 @@ function screenResults(tab){
   const fn={overview:tabOverview,flights:tabFlights,transport:tabTransport,hotels:tabHotels,food:tabFood,activities:tabActivities,map:tabMap,climate:tabClimate,safety:tabSafety,money:tabMoney,compare:tabCompare,itinerary:tabItinerary};
   if(fn[tab]) content.innerHTML=fn[tab]();
   if(tab==='map') initMap();
+  if(tab==='hotels') initHotelMap();
+  if(tab==='activities') initActivitiesMap();
 }
 
 
@@ -282,6 +284,7 @@ function tabTransport(){
 // ─── TAB: HOTELS ───────────────────────────────
 function tabHotels(){
   const a=destData.accommodation||{};
+  const name=(destData._name||'').split(',')[0].trim();
   return `
     <h3 style="font-size:20px;margin-bottom:16px;">🏨 Alojamiento</h3>
     <div style="display:flex;gap:8px;margin-bottom:16px;">
@@ -289,6 +292,7 @@ function tabHotels(){
       <div style="flex:1;background:#1e293b;border-radius:10px;padding:12px;text-align:center;"><div style="color:#94a3b8;font-size:10px;">MEDIO</div><div style="font-weight:700;color:#38bdf8;">USD ${a.avg_price_mid||'?'}</div><div style="font-size:10px;color:#64748b;">/noche</div></div>
       <div style="flex:1;background:#1e293b;border-radius:10px;padding:12px;text-align:center;"><div style="color:#94a3b8;font-size:10px;">LUJO</div><div style="font-weight:700;color:#818cf8;">USD ${a.avg_price_luxury||'?'}</div><div style="font-size:10px;color:#64748b;">/noche</div></div>
     </div>
+    <div id="hotel-map" style="height:250px;border-radius:12px;margin-bottom:16px;"></div>
     <p style="color:#94a3b8;font-size:13px;margin-bottom:12px;">Tocá una zona para seleccionar:</p>
     ${(a.recommended_zones||[]).map(z=>`
       <div onclick="selections.hotel=(selections.hotel==='${z.name}')?null:'${z.name}';screenResults('hotels')" style="background:#1e293b;border:2px solid ${selections.hotel===z.name?'#4ade80':'#334155'};border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;${selections.hotel===z.name?'box-shadow:0 0 15px rgba(74,222,128,0.2);':''}">
@@ -337,6 +341,7 @@ function tabActivities(){
   return `
     <h3 style="font-size:20px;margin-bottom:4px;">🎯 Actividades</h3>
     <p style="color:#94a3b8;font-size:13px;margin-bottom:16px;">Tocá para agregar a tu viaje (${selections.activities.length} seleccionadas)</p>
+    <div id="activities-map" style="height:250px;border-radius:12px;margin-bottom:16px;"></div>
     ${(a.must_do||[]).map((act,i)=>`
       <div onclick="toggleAct(${i})" style="background:#1e293b;border:2px solid ${selections.activities.includes(i)?'#4ade80':'#334155'};border-radius:12px;padding:16px;margin-bottom:10px;cursor:pointer;${selections.activities.includes(i)?'box-shadow:0 0 15px rgba(74,222,128,0.2);':''}">
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -485,6 +490,48 @@ function tabItinerary(){
 function changeOrigin(){
   const newCity=prompt('¿Desde qué ciudad viajás?',fromCity);
   if(newCity&&newCity.trim()){fromCity=newCity.trim();screenDestination();}
+}
+
+// ─── HOTEL MAP ─────────────────────────────────
+function initHotelMap(){
+  const destCoords={'Tokyo':[35.6762,139.6503],'Paris':[48.8566,2.3522],'París':[48.8566,2.3522],'Bali':[-8.3405,115.092],'Rome':[41.9028,12.4964],'Roma':[41.9028,12.4964],'New York':[40.7128,-74.006],'Cancún':[21.1619,-86.8515],'Machu Picchu':[-13.1631,-72.545],'London':[51.5074,-0.1278],'Londres':[51.5074,-0.1278],'Barcelona':[41.3851,2.1734],'Bangkok':[13.7563,100.5018],'Francia':[48.8566,2.3522]};
+  const name=(destData._name||'').split(',')[0].trim();
+  const center=destCoords[name]||[48.8566,2.3522];
+  setTimeout(()=>{
+    const el=document.getElementById('hotel-map');
+    if(!el)return;
+    const map=L.map('hotel-map').setView(center,13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map);
+    const zones=(destData.accommodation||{}).recommended_zones||[];
+    const colors=['#818cf8','#4ade80','#f472b6','#fbbf24','#38bdf8'];
+    zones.forEach((z,i)=>{
+      const offset=[[0.008,0.005],[-0.006,0.008],[0.005,-0.007],[-0.008,-0.005],[0.01,0.002]][i]||[0,0];
+      const pos=[center[0]+offset[0],center[1]+offset[1]];
+      L.circle(pos,{radius:600,color:colors[i%colors.length],fillColor:colors[i%colors.length],fillOpacity:0.2,weight:2}).addTo(map).bindPopup(`<b>🏨 ${z.name}</b><br>USD ${z.avg_price_per_night_usd}/noche<br>${z.description||''}<br><span style="color:green;">${(z.pros||[]).join(', ')}</span>`);
+      L.marker(pos).addTo(map).bindPopup(`<b>${z.name}</b><br>USD ${z.avg_price_per_night_usd}/noche`);
+    });
+  },100);
+}
+
+// ─── ACTIVITIES MAP ────────────────────────────
+function initActivitiesMap(){
+  const destCoords={'Tokyo':[35.6762,139.6503],'Paris':[48.8566,2.3522],'París':[48.8566,2.3522],'Bali':[-8.3405,115.092],'Rome':[41.9028,12.4964],'Roma':[41.9028,12.4964],'New York':[40.7128,-74.006],'Cancún':[21.1619,-86.8515],'Machu Picchu':[-13.1631,-72.545],'London':[51.5074,-0.1278],'Londres':[51.5074,-0.1278],'Barcelona':[41.3851,2.1734],'Bangkok':[13.7563,100.5018],'Francia':[48.8566,2.3522]};
+  const name=(destData._name||'').split(',')[0].trim();
+  const center=destCoords[name]||[48.8566,2.3522];
+  setTimeout(()=>{
+    const el=document.getElementById('activities-map');
+    if(!el)return;
+    const map=L.map('activities-map').setView(center,13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map);
+    const acts=(destData.activities||{}).must_do||[];
+    const redIcon=L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',iconSize:[25,41],iconAnchor:[12,41]});
+    acts.forEach(a=>{
+      if(a.latitude&&a.longitude){
+        L.marker([a.latitude,a.longitude],{icon:redIcon}).addTo(map).bindPopup(`<b>${a.name}</b><br>${a.description||''}<br>⏱️ ${a.duration_hours}h ${a.is_free?'| GRATIS':`| USD ${a.cost_usd}`}`);
+      }
+    });
+    L.marker(center).addTo(map).bindPopup(`<b>${name}</b> — Centro`);
+  },100);
 }
 
 // ─── INIT ──────────────────────────────────────
