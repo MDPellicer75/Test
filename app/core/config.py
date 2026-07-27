@@ -15,10 +15,10 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
 
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://travelos:travelos_secret@postgres:5432/travelos"
+    # Database (SQLite for dev, PostgreSQL for production)
+    DATABASE_URL: str = "sqlite+aiosqlite:///./travelos.db"
 
-    # Redis
+    # Redis (optional, not needed for dev)
     REDIS_URL: str = "redis://redis:6379/0"
 
     # JWT
