@@ -403,39 +403,6 @@ REGLAS:
 - Variedad de precios
 - Respondé SOLO JSON"""
         return await self._call_ai_json(prompt)
-        """Call OpenAI and get JSON response."""
-        import json
-
-        if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY == "sk-placeholder":
-            return self._fallback_destination_data()
-
-        try:
-            client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-
-            response = await client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "Sos un experto en viajes. Respondé SOLO JSON válido. "
-                            "Sin markdown, sin ```json, sin texto extra. Solo el JSON. "
-                            "Sé conciso en descripciones."
-                        ),
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.7,
-                max_tokens=4000,
-                timeout=90,
-                response_format={"type": "json_object"},
-            )
-
-            content = response.choices[0].message.content
-            return json.loads(content)
-
-        except Exception as e:
-            return self._fallback_destination_data()
 
     def _fallback_destination_data(self) -> dict:
         """Fallback data when OpenAI is not available."""
@@ -746,7 +713,6 @@ REGLAS:
                 ],
                 temperature=0.7,
                 max_tokens=4000,
-                timeout=90,
                 response_format={"type": "json_object"},
             )
 
@@ -754,4 +720,5 @@ REGLAS:
             return json.loads(content)
 
         except Exception as e:
+            print(f"[TravelOS AI ERROR] {type(e).__name__}: {e}")
             return self._fallback_destination_data()
