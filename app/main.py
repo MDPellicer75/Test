@@ -21,6 +21,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.users import router as users_router
 from app.api.v1.trips import router as trips_router
 from app.api.v1.chat import router as chat_router
+from app.api.v1.destinations import router as destinations_router
 
 
 @asynccontextmanager
@@ -72,3 +73,4 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
 app.include_router(trips_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
+app.include_router(destinations_router, prefix="/api/v1")
