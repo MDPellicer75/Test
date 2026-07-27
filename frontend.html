@@ -172,7 +172,10 @@ async function doExplore(dest){
   `);
 
   try{
-    const r=await fetch(`${API}/api/v1/destinations/explore`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({destination,from_city:fromCity,travelers:travelers,budget_usd:2500})});
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+    const r=await fetch(`${API}/api/v1/destinations/explore`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({destination,from_city:fromCity,travelers:travelers,budget_usd:2500}),signal:controller.signal});
+    clearTimeout(timeoutId);
     if(r.status===401){screenLogin('Sesión expirada. Logueate de nuevo.');return;}
     destData=await r.json();
     destData._name=destination;
@@ -183,7 +186,13 @@ async function doExplore(dest){
     destCache[cacheKey]=destData; // Cache it
     selections={flight:null,hotel:null,activities:[]};
     screenResults('overview');
-  }catch(e){screenLogin('Error de conexión');}
+  }catch(e){
+    if(e.name==='AbortError'){
+      render(`<div style="text-align:center;padding:80px 20px;"><h3 style="color:#f87171;">⏱️ Tardó demasiado</h3><p style="color:#94a3b8;margin-top:10px;">El servidor tardó en responder. Intentá de nuevo.</p><button onclick="doExplore('${destination}')" style="margin-top:20px;padding:12px 24px;border:none;border-radius:8px;background:#38bdf8;color:white;font-weight:600;cursor:pointer;">Reintentar</button><br><button onclick="screenDestination()" style="margin-top:10px;padding:12px 24px;border:none;border-radius:8px;background:#334155;color:white;cursor:pointer;">← Volver</button></div>`);
+    } else {
+      render(`<div style="text-align:center;padding:80px 20px;"><h3 style="color:#f87171;">Error de conexión</h3><p style="color:#94a3b8;margin-top:10px;">No se pudo conectar al servidor.</p><button onclick="screenDestination()" style="margin-top:20px;padding:12px 24px;border:none;border-radius:8px;background:#334155;color:white;cursor:pointer;">← Volver</button></div>`);
+    }
+  }
 }
 
 

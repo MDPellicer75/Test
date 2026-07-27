@@ -296,19 +296,19 @@ Generá un JSON con TODA esta información real y actualizada:
 REGLAS:
 - Usá datos REALES y actualizados
 - Precios reales del mercado actual
-- Mínimo 5 opciones de vuelo
-- Mínimo 5 zonas de alojamiento
-- Mínimo 15 hoteles/hostels REALES con nombre, precio, rating y coordenadas (latitude, longitude)
-- Incluí opciones desde hostels USD 20/noche hasta hoteles 5 estrellas USD 500+/noche
-- Mínimo 10 platos típicos
-- Mínimo 15 actividades con coordenadas (latitude, longitude)
-- Los 12 meses de clima
-- Mínimo 3 itinerarios sugeridos (budget, comfort, adventure)
-- Comparaciones para 3, 5, 7 y 10 días
-- En transporte incluí mínimo 3 rutas comunes (aeropuerto-centro, centro-atracciones)
-- Cada ruta de transporte debe tener mínimo 2 opciones (barata vs rápida)
+- Mínimo 4 opciones de vuelo
+- Mínimo 3 zonas de alojamiento
+- Mínimo 8 hoteles REALES con nombre, precio, rating y coordenadas
+- Incluí desde hostels baratos hasta hoteles de lujo
+- Mínimo 8 platos típicos
+- Mínimo 8 actividades con coordenadas (latitude, longitude)
+- Los 12 meses de clima (solo mes, temp, rain_days, is_best_time, what_to_wear)
+- 1 itinerario sugerido (budget)
+- Comparaciones para 3, 5 y 7 días
+- En transporte: ruta aeropuerto-centro con 3 opciones
 - Todo en español
 - NO inventar URLs
+- Sé conciso en descripciones (máximo 15 palabras cada una)
 - Respondé SOLO el JSON, sin texto adicional"""
 
 
@@ -329,13 +329,15 @@ REGLAS:
                         "role": "system",
                         "content": (
                             "Sos un experto en viajes. Respondé SOLO JSON válido. "
-                            "Sin markdown, sin ```json, sin texto extra. Solo el JSON."
+                            "Sin markdown, sin ```json, sin texto extra. Solo el JSON. "
+                            "Sé conciso en descripciones."
                         ),
                     },
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.7,
-                max_tokens=8000,
+                max_tokens=4000,
+                timeout=90,
                 response_format={"type": "json_object"},
             )
 
