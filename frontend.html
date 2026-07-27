@@ -1,597 +1,456 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TravelOS</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
-        .header { background: #1e293b; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; position: sticky; top: 0; z-index: 1000; }
-        .header h1 { font-size: 20px; background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .header .logout { color: #94a3b8; font-size: 13px; cursor: pointer; }
-        .screen { display: none; }
-        .screen.active { display: block; }
-        input, select { width: 100%; padding: 14px; border: 1px solid #334155; border-radius: 10px; background: #0f172a; color: white; font-size: 16px; margin-bottom: 12px; outline: none; }
-        input:focus { border-color: #38bdf8; }
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; }
-        .btn-primary { background: linear-gradient(135deg, #38bdf8, #818cf8); color: white; }
-        .btn-secondary { background: #334155; color: white; margin-top: 10px; }
-
-        /* Tabs */
-        .tabs { display: flex; background: #1e293b; border-bottom: 1px solid #334155; overflow-x: auto; position: sticky; top: 52px; z-index: 999; }
-        .tab { padding: 12px 16px; font-size: 13px; cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; color: #94a3b8; transition: all .2s; }
-        .tab.active { color: #38bdf8; border-bottom-color: #38bdf8; }
-        .tab:hover { color: #e2e8f0; }
-        
-        /* Cards */
-        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all .2s; }
-        .card:hover { border-color: #38bdf8; transform: translateY(-2px); }
-        .card.selected { border-color: #4ade80; box-shadow: 0 0 15px rgba(74,222,128,0.2); }
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .card-title { font-weight: 600; font-size: 15px; }
-        .card-price { color: #4ade80; font-weight: 700; font-size: 18px; }
-        .card-detail { color: #94a3b8; font-size: 13px; line-height: 1.6; }
-        .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-        .badge-green { background: #065f46; color: #4ade80; }
-        .badge-blue { background: #1e3a5f; color: #38bdf8; }
-        .badge-yellow { background: #713f12; color: #fbbf24; }
-        .badge-red { background: #7f1d1d; color: #f87171; }
-
-        /* Map */
-        #map { height: 250px; border-radius: 12px; margin-bottom: 16px; }
-        
-        /* Section */
-        .section { padding: 16px; max-width: 600px; margin: 0 auto; }
-        .section-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-        
-        /* Compare bar */
-        .compare-bar { background: #1e293b; border-top: 1px solid #334155; padding: 12px 20px; position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; z-index: 1000; }
-        .compare-total { font-size: 14px; color: #94a3b8; }
-        .compare-total strong { color: #4ade80; font-size: 20px; }
-        .btn-next { padding: 12px 24px; border-radius: 10px; border: none; background: linear-gradient(135deg, #38bdf8, #818cf8); color: white; font-weight: 600; cursor: pointer; font-size: 14px; }
-        
-        /* Login */
-        .login-container { max-width: 400px; margin: 60px auto; padding: 20px; }
-        .login-box { background: #1e293b; border-radius: 16px; padding: 30px; }
-        .login-box h2 { text-align: center; margin-bottom: 20px; }
-        .error-text { color: #f87171; text-align: center; margin-top: 10px; font-size: 13px; }
-        
-        /* Popular grid */
-        .popular-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
-        .dest-card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; cursor: pointer; transition: all .2s; text-align: center; }
-        .dest-card:hover { border-color: #38bdf8; transform: translateY(-3px); }
-        .dest-card .emoji { font-size: 36px; margin-bottom: 8px; }
-        .dest-card .name { font-weight: 600; }
-        .dest-card .cost { color: #4ade80; font-size: 13px; margin-top: 4px; }
-        
-        /* Search */
-        .search-wrap { margin-top: 20px; position: relative; }
-        .search-wrap input { padding-left: 45px; font-size: 18px; }
-        .search-wrap .icon { position: absolute; left: 15px; top: 14px; font-size: 20px; }
-        
-        .tip { background: #334155; border-radius: 8px; padding: 10px 14px; margin-top: 8px; font-size: 13px; color: #94a3b8; }
-        .tip::before { content: "💡 "; }
-        
-        /* Loading */
-        .loading { text-align: center; padding: 80px 20px; }
-        .spinner { width: 50px; height: 50px; border: 4px solid #334155; border-top-color: #38bdf8; border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 20px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
-        /* Slider */
-        .slider { display: flex; overflow-x: auto; gap: 12px; padding-bottom: 10px; scrollbar-width: none; }
-        .slider::-webkit-scrollbar { display: none; }
-        .slider-card { min-width: 280px; flex-shrink: 0; }
-        
-        .pb-80 { padding-bottom: 80px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TravelOS</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+</style>
 </head>
 <body>
+<!-- APP SHELL -->
+<div id="app"></div>
 
-    <!-- HEADER -->
-    <div class="header" id="main-header" style="display:none;">
-        <h1>TravelOS</h1>
-        <span class="logout" onclick="logout()">Salir</span>
+<script>
+const API = window.location.origin;
+let token = '';
+let destData = {};
+let userName = '';
+let fromCity = 'Buenos Aires';
+let selections = {flight:null, hotel:null, activities:[]};
+
+
+// ─── RENDER ENGINE ─────────────────────────────
+function render(html){ document.getElementById('app').innerHTML = html; }
+
+// ─── LOGIN SCREEN ──────────────────────────────
+function screenLogin(err=''){
+  render(`
+    <div style="max-width:400px;margin:60px auto;padding:20px;">
+      <div style="text-align:center;margin-bottom:30px;">
+        <h1 style="font-size:32px;background:linear-gradient(90deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">TravelOS</h1>
+        <p style="color:#94a3b8;margin-top:5px;">Tu copiloto de viaje con IA</p>
+      </div>
+      <div style="background:#1e293b;border-radius:16px;padding:30px;">
+        <h2 style="text-align:center;margin-bottom:20px;">Iniciá tu aventura</h2>
+        <input id="f-email" type="email" placeholder="Email" value="demo@travelos.com" style="width:100%;padding:14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:white;font-size:16px;margin-bottom:12px;outline:none;">
+        <input id="f-pass" type="password" placeholder="Contraseña (min 8)" value="Password123!" style="width:100%;padding:14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:white;font-size:16px;margin-bottom:12px;outline:none;">
+        <input id="f-name" type="text" placeholder="Tu nombre" style="width:100%;padding:14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:white;font-size:16px;margin-bottom:12px;outline:none;">
+        <input id="f-from" type="text" placeholder="Desde dónde viajás (ej: Buenos Aires)" value="Buenos Aires" style="width:100%;padding:14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:white;font-size:16px;margin-bottom:12px;outline:none;">
+        <button onclick="doRegister()" style="width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#38bdf8,#818cf8);color:white;">Crear cuenta</button>
+        <button onclick="doLogin()" style="width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;background:#334155;color:white;margin-top:10px;">Ya tengo cuenta</button>
+        ${err?`<p style="color:#f87171;text-align:center;margin-top:12px;font-size:13px;">${err}</p>`:''}
+      </div>
     </div>
+  `);
+}
 
-    <!-- LOGIN SCREEN -->
-    <div class="screen active" id="screen-login">
-        <div class="login-container">
-            <div style="text-align:center;margin-bottom:30px;">
-                <h1 style="font-size:32px;background:linear-gradient(90deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">TravelOS</h1>
-                <p style="color:#94a3b8;margin-top:5px;">Tu copiloto de viaje con IA</p>
-            </div>
-            <div class="login-box">
-                <h2>Iniciá tu aventura</h2>
-                <input type="email" id="login-email" placeholder="Email" value="demo@travelos.com">
-                <input type="password" id="login-password" placeholder="Contraseña" value="Password123!">
-                <input type="text" id="login-name" placeholder="Tu nombre">
-                <button class="btn btn-primary" onclick="register()">Crear cuenta</button>
-                <button class="btn btn-secondary" onclick="login()">Ya tengo cuenta</button>
-                <p class="error-text" id="login-error"></p>
-            </div>
+
+// ─── AUTH FUNCTIONS ────────────────────────────
+async function doRegister(){
+  const email=document.getElementById('f-email').value;
+  const pass=document.getElementById('f-pass').value;
+  const name=document.getElementById('f-name').value||'Viajero';
+  fromCity=document.getElementById('f-from').value||'Buenos Aires';
+  userName=name;
+  try{
+    let r=await fetch(`${API}/api/v1/auth/register`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass,name,language:'es'})});
+    if(r.status===409) return doLogin();
+    const d=await r.json();
+    if(d.access_token){token=d.access_token;screenDestination();}
+    else screenLogin(d.detail||'Error');
+  }catch(e){screenLogin('Error de conexión');}
+}
+
+async function doLogin(){
+  const email=document.getElementById('f-email').value;
+  const pass=document.getElementById('f-pass').value;
+  fromCity=document.getElementById('f-from').value||'Buenos Aires';
+  try{
+    const r=await fetch(`${API}/api/v1/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
+    const d=await r.json();
+    if(d.access_token){token=d.access_token;screenDestination();}
+    else screenLogin(d.detail||'Email o contraseña incorrectos');
+  }catch(e){screenLogin('Error de conexión');}
+}
+
+
+// ─── DESTINATION SCREEN ────────────────────────
+function screenDestination(){
+  render(`
+    <div style="background:#1e293b;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #334155;">
+      <h1 style="font-size:20px;background:linear-gradient(90deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">TravelOS</h1>
+      <span style="color:#94a3b8;font-size:13px;">Desde: <strong style="color:white;">${fromCity}</strong> &nbsp; <span onclick="screenLogin()" style="color:#f87171;cursor:pointer;">Salir</span></span>
+    </div>
+    <div style="max-width:600px;margin:0 auto;padding:20px;">
+      <div style="position:relative;margin-top:10px;">
+        <span style="position:absolute;left:15px;top:16px;font-size:20px;">🌍</span>
+        <input id="dest-input" type="text" placeholder="¿A dónde querés ir?" style="width:100%;padding:16px 16px 16px 45px;border:1px solid #334155;border-radius:12px;background:#0f172a;color:white;font-size:18px;outline:none;" onkeypress="if(event.key==='Enter')doExplore()">
+      </div>
+      <p style="color:#64748b;margin-top:24px;font-size:14px;font-weight:600;">Destinos populares</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;">
+        ${[
+          {n:'Tokyo',e:'🗼',c:'Japan',p:120},
+          {n:'París',e:'🇫🇷',c:'France',p:150},
+          {n:'Bali',e:'🏝️',c:'Indonesia',p:50},
+          {n:'Roma',e:'🏛️',c:'Italy',p:110},
+          {n:'New York',e:'🗽',c:'USA',p:200},
+          {n:'Cancún',e:'🏖️',c:'Mexico',p:80},
+        ].map(d=>`
+          <div onclick="doExplore('${d.n}, ${d.c}')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;cursor:pointer;text-align:center;transition:all .2s;" onmouseover="this.style.borderColor='#38bdf8'" onmouseout="this.style.borderColor='#334155'">
+            <div style="font-size:32px;">${d.e}</div>
+            <div style="font-weight:600;margin-top:6px;">${d.n}</div>
+            <div style="color:#4ade80;font-size:12px;margin-top:4px;">USD ${d.p}/día</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `);
+}
+
+
+// ─── EXPLORE ───────────────────────────────────
+async function doExplore(dest){
+  const destination = dest || document.getElementById('dest-input').value;
+  if(!destination) return;
+  
+  // Loading screen
+  render(`
+    <div style="text-align:center;padding:100px 20px;">
+      <div style="width:50px;height:50px;border:4px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 20px;"></div>
+      <h3>Analizando ${destination}...</h3>
+      <p style="color:#94a3b8;margin-top:10px;">Buscando vuelos desde ${fromCity}, hoteles, rutas, actividades y más</p>
+      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+    </div>
+  `);
+
+  try{
+    const r=await fetch(`${API}/api/v1/destinations/explore`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({destination,from_city:fromCity,travelers:1,budget_usd:2500})});
+    if(r.status===401){screenLogin('Sesión expirada. Logueate de nuevo.');return;}
+    destData=await r.json();
+    destData._name=destination;
+    destData._from=fromCity;
+    selections={flight:null,hotel:null,activities:[]};
+    screenResults('overview');
+  }catch(e){screenLogin('Error de conexión');}
+}
+
+
+// ─── RESULTS SCREEN ────────────────────────────
+const TABS=[
+  {id:'overview',icon:'📊',label:'Resumen'},
+  {id:'flights',icon:'✈️',label:'Vuelos'},
+  {id:'transport',icon:'🚇',label:'Transporte'},
+  {id:'hotels',icon:'🏨',label:'Hoteles'},
+  {id:'food',icon:'🍜',label:'Comida'},
+  {id:'activities',icon:'🎯',label:'Actividades'},
+  {id:'map',icon:'🗺️',label:'Mapa'},
+  {id:'climate',icon:'🌤️',label:'Clima'},
+  {id:'safety',icon:'🛡️',label:'Seguridad'},
+  {id:'money',icon:'💰',label:'Dinero'},
+  {id:'compare',icon:'📏',label:'Comparar'},
+  {id:'itinerary',icon:'📋',label:'Itinerario'},
+];
+
+function screenResults(tab){
+  const name=(destData._name||'').split(',')[0];
+  const totalCost=(selections.flight||0);
+  render(`
+    <div style="background:#1e293b;padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #334155;position:sticky;top:0;z-index:1000;">
+      <span onclick="screenDestination()" style="cursor:pointer;font-size:20px;">←</span>
+      <h2 style="font-size:18px;flex:1;">${name}</h2>
+      <span style="color:#94a3b8;font-size:12px;">desde ${fromCity}</span>
+    </div>
+    <div style="display:flex;overflow-x:auto;background:#1e293b;border-bottom:1px solid #334155;position:sticky;top:44px;z-index:999;scrollbar-width:none;" id="tabs-bar">
+      ${TABS.map(t=>`<div onclick="screenResults('${t.id}')" style="padding:10px 14px;font-size:12px;cursor:pointer;white-space:nowrap;border-bottom:2px solid ${t.id===tab?'#38bdf8':'transparent'};color:${t.id===tab?'#38bdf8':'#94a3b8'};">${t.icon} ${t.label}</div>`).join('')}
+    </div>
+    <div style="max-width:600px;margin:0 auto;padding:16px;padding-bottom:80px;" id="tab-content"></div>
+    <div style="position:fixed;bottom:0;left:0;right:0;background:#1e293b;border-top:1px solid #334155;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;z-index:1000;">
+      <div style="font-size:13px;color:#94a3b8;">Total: <strong style="color:#4ade80;font-size:18px;">USD ${totalCost.toLocaleString()}</strong></div>
+      <button onclick="alert('Próximo paso: reservar. Disponible en Sprint 2.')" style="padding:10px 20px;border:none;border-radius:8px;background:linear-gradient(135deg,#38bdf8,#818cf8);color:white;font-weight:600;cursor:pointer;font-size:13px;">Armar mi viaje →</button>
+    </div>
+  `);
+  const content=document.getElementById('tab-content');
+  const fn={overview:tabOverview,flights:tabFlights,transport:tabTransport,hotels:tabHotels,food:tabFood,activities:tabActivities,map:tabMap,climate:tabClimate,safety:tabSafety,money:tabMoney,compare:tabCompare,itinerary:tabItinerary};
+  if(fn[tab]) content.innerHTML=fn[tab]();
+  if(tab==='map') initMap();
+}
+
+
+// ─── TAB: OVERVIEW ─────────────────────────────
+function tabOverview(){
+  const qs=destData.quick_stats||{};
+  const name=(destData._name||'').split(',')[0];
+  return `
+    <h3 style="font-size:20px;margin-bottom:16px;">📊 ${name} — Resumen rápido</h3>
+    <div style="background:#1e293b;border-radius:12px;padding:20px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div><div style="color:#94a3b8;font-size:11px;">COSTO/DÍA</div><div style="font-size:24px;font-weight:700;color:#4ade80;">USD ${qs.avg_cost_per_day_usd||'?'}</div></div>
+        <div><div style="color:#94a3b8;font-size:11px;">DÍAS IDEALES</div><div style="font-size:24px;font-weight:700;">${qs.ideal_days||'?'}</div></div>
+        <div><div style="color:#94a3b8;font-size:11px;">MÍNIMO</div><div style="font-size:24px;font-weight:700;">${qs.min_days_recommended||'?'} días</div></div>
+        <div><div style="color:#94a3b8;font-size:11px;">MEJOR ÉPOCA</div><div style="font-size:13px;font-weight:600;margin-top:4px;">${qs.best_time_to_visit||'?'}</div></div>
+      </div>
+    </div>
+    <h3 style="font-size:16px;margin-bottom:12px;">Explorá cada sección ↓</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      ${TABS.filter(t=>t.id!=='overview').map(t=>`
+        <div onclick="screenResults('${t.id}')" style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;text-align:center;cursor:pointer;" onmouseover="this.style.borderColor='#38bdf8'" onmouseout="this.style.borderColor='#334155'">
+          <div style="font-size:24px;">${t.icon}</div>
+          <div style="font-size:11px;margin-top:4px;color:#94a3b8;">${t.label}</div>
         </div>
+      `).join('')}
     </div>
+  `;
+}
 
-    <!-- DESTINATION SCREEN -->
-    <div class="screen" id="screen-destination">
-        <div class="section">
-            <div class="search-wrap">
-                <span class="icon">🌍</span>
-                <input type="text" id="dest-input" placeholder="¿A dónde querés ir?" onkeypress="if(event.key==='Enter')explore()">
-            </div>
-            <p style="color:#64748b;margin-top:24px;font-size:14px;font-weight:600;">Destinos populares</p>
-            <div class="popular-grid">
-                <div class="dest-card" onclick="selectDest('Tokyo, Japan')"><div class="emoji">🗼</div><div class="name">Tokyo</div><div class="cost">USD 120/día</div></div>
-                <div class="dest-card" onclick="selectDest('Paris, France')"><div class="emoji">🇫🇷</div><div class="name">París</div><div class="cost">USD 150/día</div></div>
-                <div class="dest-card" onclick="selectDest('Bali, Indonesia')"><div class="emoji">🏝️</div><div class="name">Bali</div><div class="cost">USD 50/día</div></div>
-                <div class="dest-card" onclick="selectDest('Rome, Italy')"><div class="emoji">🏛️</div><div class="name">Roma</div><div class="cost">USD 110/día</div></div>
-                <div class="dest-card" onclick="selectDest('New York, USA')"><div class="emoji">🗽</div><div class="name">New York</div><div class="cost">USD 200/día</div></div>
-                <div class="dest-card" onclick="selectDest('Machu Picchu, Peru')"><div class="emoji">🏔️</div><div class="name">Machu Picchu</div><div class="cost">USD 60/día</div></div>
-            </div>
+
+// ─── TAB: FLIGHTS ──────────────────────────────
+function tabFlights(){
+  const f=destData.flights||{};
+  const opts=f.options||[];
+  return `
+    <h3 style="font-size:20px;margin-bottom:4px;">✈️ Vuelos desde ${fromCity}</h3>
+    <p style="color:#94a3b8;font-size:13px;margin-bottom:16px;">Tocá un vuelo para seleccionarlo</p>
+    <div style="display:flex;gap:12px;margin-bottom:16px;">
+      <div style="flex:1;background:#1e293b;border-radius:10px;padding:14px;text-align:center;">
+        <div style="color:#94a3b8;font-size:11px;">MÁS BARATO</div>
+        <div style="font-size:20px;font-weight:700;color:#4ade80;">USD ${f.cheapest_price||'?'}</div>
+      </div>
+      <div style="flex:1;background:#1e293b;border-radius:10px;padding:14px;text-align:center;">
+        <div style="color:#94a3b8;font-size:11px;">MÁS RÁPIDO</div>
+        <div style="font-size:20px;font-weight:700;color:#38bdf8;">${f.fastest_duration_hours||'?'}h</div>
+      </div>
+    </div>
+    <div style="background:#334155;border-radius:8px;padding:10px;margin-bottom:16px;font-size:12px;color:#94a3b8;text-align:center;">
+      💡 Mejor día para comprar: <strong style="color:white;">${f.best_day_to_buy||'?'}</strong>
+    </div>
+    ${opts.map(o=>`
+      <div onclick="selectFlight(${o.price_usd})" style="background:#1e293b;border:2px solid ${selections.flight===o.price_usd?'#4ade80':'#334155'};border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;transition:all .2s;${selections.flight===o.price_usd?'box-shadow:0 0 15px rgba(74,222,128,0.2);':''}">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-weight:600;font-size:16px;">${o.airline}</div>
+          <div style="color:#4ade80;font-weight:700;font-size:20px;">USD ${o.price_usd}</div>
         </div>
-    </div>
-
-    <!-- LOADING -->
-    <div class="screen" id="screen-loading">
-        <div class="loading">
-            <div class="spinner"></div>
-            <h3>Analizando destino...</h3>
-            <p style="color:#94a3b8;margin-top:10px;">Buscando vuelos, hoteles, rutas, actividades y más</p>
+        <div style="margin-top:8px;color:#94a3b8;font-size:13px;">
+          ⏱️ ${o.duration_hours}h &nbsp;
+          ${o.stops===0?'<span style="background:#065f46;color:#4ade80;padding:2px 8px;border-radius:4px;font-size:11px;">Directo</span>':`<span style="background:#713f12;color:#fbbf24;padding:2px 8px;border-radius:4px;font-size:11px;">${o.stops} escala: ${(o.stop_cities||[]).join(', ')}</span>`}
+          ${o.is_cheapest?'<span style="background:#065f46;color:#4ade80;padding:2px 8px;border-radius:4px;font-size:11px;margin-left:4px;">💰 Más barato</span>':''}
+          ${o.is_fastest?'<span style="background:#1e3a5f;color:#38bdf8;padding:2px 8px;border-radius:4px;font-size:11px;margin-left:4px;">⚡ Más rápido</span>':''}
         </div>
-    </div>
+        <div style="margin-top:6px;color:#64748b;font-size:12px;">🧳 ${o.baggage_included?`${o.baggage_kg||23}kg incluido`:'Sin equipaje incluido'} &nbsp; ✈️ ${o.origin_airport||'?'} → ${o.destination_airport||'?'}</div>
+        ${selections.flight===o.price_usd?'<div style="margin-top:8px;color:#4ade80;font-size:12px;font-weight:600;">✓ SELECCIONADO</div>':''}
+      </div>
+    `).join('')}
+    ${(f.tips||[]).map(t=>`<div style="background:#334155;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;color:#94a3b8;">💡 ${t}</div>`).join('')}
+  `;
+}
+function selectFlight(p){selections.flight=(selections.flight===p)?null:p;screenResults('flights');}
 
-    <!-- RESULTS SCREEN -->
-    <div class="screen" id="screen-results">
-        <div class="tabs" id="tabs-bar"></div>
-        <div class="section pb-80" id="tab-content"></div>
-        <div class="compare-bar" id="compare-bar" style="display:none;">
-            <div class="compare-total">Total estimado: <strong id="total-cost">USD 0</strong></div>
-            <button class="btn-next" onclick="nextStep()">Siguiente →</button>
+
+// ─── TAB: TRANSPORT ────────────────────────────
+function tabTransport(){
+  const t=destData.transport||{};
+  return `
+    <h3 style="font-size:20px;margin-bottom:16px;">🚇 Transporte en destino</h3>
+    <h4 style="color:#94a3b8;font-size:14px;margin-bottom:12px;">Del aeropuerto al centro:</h4>
+    ${(t.airport_to_center||[]).map(r=>`
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="font-weight:600;">${r.method}</div><div style="color:#94a3b8;font-size:12px;margin-top:4px;">⏱️ ${r.duration_minutes} min ${r.frequency?`· 🔄 ${r.frequency}`:''}</div></div>
+        <div style="color:#4ade80;font-weight:700;font-size:18px;">USD ${r.cost_usd}</div>
+      </div>
+    `).join('')}
+    <h4 style="color:#94a3b8;font-size:14px;margin:20px 0 12px;">🎫 Pases turísticos:</h4>
+    ${(t.passes_available||[]).map(p=>`
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">${p.name}</div><div style="color:#4ade80;font-weight:700;">USD ${p.price_usd}</div></div>
+        <div style="color:#94a3b8;font-size:12px;margin-top:6px;">📅 ${p.duration_days} días · Cubre: ${(p.covers||[]).join(', ')}</div>
+        <div style="color:#38bdf8;font-size:12px;margin-top:4px;">💡 ${p.worth_it_if}</div>
+      </div>
+    `).join('')}
+    <div style="background:#1e293b;border-radius:10px;padding:14px;margin-top:16px;">
+      <div style="margin-bottom:8px;"><strong>Mejor por presupuesto:</strong> <span style="color:#4ade80;">${t.best_option_budget||'?'}</span></div>
+      <div><strong>Mejor por comodidad:</strong> <span style="color:#38bdf8;">${t.best_option_comfort||'?'}</span></div>
+    </div>
+    ${(t.tips||[]).map(tip=>`<div style="background:#334155;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;color:#94a3b8;">💡 ${tip}</div>`).join('')}
+  `;
+}
+
+
+// ─── TAB: HOTELS ───────────────────────────────
+function tabHotels(){
+  const a=destData.accommodation||{};
+  return `
+    <h3 style="font-size:20px;margin-bottom:16px;">🏨 Alojamiento</h3>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <div style="flex:1;background:#1e293b;border-radius:10px;padding:12px;text-align:center;"><div style="color:#94a3b8;font-size:10px;">BUDGET</div><div style="font-weight:700;color:#4ade80;">USD ${a.avg_price_budget||'?'}</div><div style="font-size:10px;color:#64748b;">/noche</div></div>
+      <div style="flex:1;background:#1e293b;border-radius:10px;padding:12px;text-align:center;"><div style="color:#94a3b8;font-size:10px;">MEDIO</div><div style="font-weight:700;color:#38bdf8;">USD ${a.avg_price_mid||'?'}</div><div style="font-size:10px;color:#64748b;">/noche</div></div>
+      <div style="flex:1;background:#1e293b;border-radius:10px;padding:12px;text-align:center;"><div style="color:#94a3b8;font-size:10px;">LUJO</div><div style="font-weight:700;color:#818cf8;">USD ${a.avg_price_luxury||'?'}</div><div style="font-size:10px;color:#64748b;">/noche</div></div>
+    </div>
+    <p style="color:#94a3b8;font-size:13px;margin-bottom:12px;">Tocá una zona para seleccionar:</p>
+    ${(a.recommended_zones||[]).map(z=>`
+      <div onclick="selections.hotel=(selections.hotel==='${z.name}')?null:'${z.name}';screenResults('hotels')" style="background:#1e293b;border:2px solid ${selections.hotel===z.name?'#4ade80':'#334155'};border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;${selections.hotel===z.name?'box-shadow:0 0 15px rgba(74,222,128,0.2);':''}">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-weight:600;font-size:16px;">${z.name}</div>
+          <div style="color:#4ade80;font-weight:700;">USD ${z.avg_price_per_night_usd}/n</div>
         </div>
+        <div style="color:#94a3b8;font-size:13px;margin-top:6px;">${z.description}</div>
+        <div style="margin-top:8px;font-size:12px;"><span style="color:#4ade80;">✓ ${(z.pros||[]).join(' · ')}</span></div>
+        <div style="font-size:12px;"><span style="color:#f87171;">✗ ${(z.cons||[]).join(' · ')}</span></div>
+        ${selections.hotel===z.name?'<div style="margin-top:8px;color:#4ade80;font-size:12px;font-weight:600;">✓ SELECCIONADO</div>':''}
+      </div>
+    `).join('')}
+    ${(a.tips||[]).map(t=>`<div style="background:#334155;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;color:#94a3b8;">💡 ${t}</div>`).join('')}
+  `;
+}
+
+
+// ─── TAB: FOOD ─────────────────────────────────
+function tabFood(){
+  const f=destData.food||{};
+  return `
+    <h3 style="font-size:20px;margin-bottom:16px;">🍜 Gastronomía</h3>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <div style="flex:1;background:#1e293b;border-radius:10px;padding:12px;text-align:center;"><div style="color:#94a3b8;font-size:10px;">STREET</div><div style="font-weight:700;color:#4ade80;">USD ${f.avg_meal_budget_usd||'?'}</div></div>
+      <div style="flex:1;background:#1e293b;border-radius:10px;padding:12px;text-align:center;"><div style="color:#94a3b8;font-size:10px;">MEDIO</div><div style="font-weight:700;color:#38bdf8;">USD ${f.avg_meal_mid_usd||'?'}</div></div>
+      <div style="flex:1;background:#1e293b;border-radius:10px;padding:12px;text-align:center;"><div style="color:#94a3b8;font-size:10px;">FINE</div><div style="font-weight:700;color:#818cf8;">USD ${f.avg_meal_luxury_usd||'?'}</div></div>
     </div>
+    <div style="background:#713f12;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#fbbf24;">💡 Propina: ${f.tipping_culture||'?'}</div>
+    <h4 style="font-size:15px;margin-bottom:12px;">⭐ Imperdibles</h4>
+    ${(f.typical_dishes||[]).filter(d=>d.is_must_try).map(d=>`
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">${d.name}</div><div style="color:#4ade80;font-weight:600;">USD ${d.avg_price_usd}</div></div>
+        <div style="color:#94a3b8;font-size:12px;margin-top:4px;">${d.description} ${d.vegetarian?'🌱':''}</div>
+      </div>
+    `).join('')}
+    ${(f.markets||[]).length?`<h4 style="font-size:15px;margin:16px 0 12px;">🛒 Mercados</h4>${f.markets.map(m=>`<div style="background:#1e293b;border-radius:8px;padding:12px;margin-bottom:8px;">${m}</div>`).join('')}`:''}
+    ${(f.tips||[]).map(t=>`<div style="background:#334155;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;color:#94a3b8;">💡 ${t}</div>`).join('')}
+  `;
+}
 
-    <script>
-    const API = window.location.origin;
-    let token = '';
-    let destData = {};
-    let selections = { flight: null, hotel_zone: null, activities: [] };
-    let currentTab = 'overview';
 
-    const TABS = [
-        { id: 'overview', label: '📊 Resumen', icon: '📊' },
-        { id: 'flights', label: '✈️ Vuelos', icon: '✈️' },
-        { id: 'transport', label: '🚇 Transporte', icon: '🚇' },
-        { id: 'hotels', label: '🏨 Hoteles', icon: '🏨' },
-        { id: 'food', label: '🍜 Comida', icon: '🍜' },
-        { id: 'activities', label: '🎯 Actividades', icon: '🎯' },
-        { id: 'climate', label: '🌤️ Clima', icon: '🌤️' },
-        { id: 'safety', label: '🛡️ Seguridad', icon: '🛡️' },
-        { id: 'money', label: '💰 Dinero', icon: '💰' },
-        { id: 'compare', label: '📏 Comparar', icon: '📏' },
-        { id: 'itinerary', label: '📋 Itinerarios', icon: '📋' },
-        { id: 'map', label: '🗺️ Mapa', icon: '🗺️' },
-    ];
+// ─── TAB: ACTIVITIES ───────────────────────────
+function tabActivities(){
+  const a=destData.activities||{};
+  return `
+    <h3 style="font-size:20px;margin-bottom:4px;">🎯 Actividades</h3>
+    <p style="color:#94a3b8;font-size:13px;margin-bottom:16px;">Tocá para agregar a tu viaje (${selections.activities.length} seleccionadas)</p>
+    ${(a.must_do||[]).map((act,i)=>`
+      <div onclick="toggleAct(${i})" style="background:#1e293b;border:2px solid ${selections.activities.includes(i)?'#4ade80':'#334155'};border-radius:12px;padding:16px;margin-bottom:10px;cursor:pointer;${selections.activities.includes(i)?'box-shadow:0 0 15px rgba(74,222,128,0.2);':''}">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-weight:600;">${act.name}</div>
+          <div>${act.is_free?'<span style="background:#065f46;color:#4ade80;padding:3px 8px;border-radius:6px;font-size:11px;">GRATIS</span>':`<span style="color:#4ade80;font-weight:700;">USD ${act.cost_usd}</span>`}</div>
+        </div>
+        <div style="color:#94a3b8;font-size:12px;margin-top:6px;">${act.description||''}</div>
+        <div style="color:#64748b;font-size:11px;margin-top:4px;">⏱️ ${act.duration_hours}h · ⭐ ${act.rating||'?'}/5 ${act.best_time_to_visit?`· 🕐 ${act.best_time_to_visit}`:''}</div>
+        ${selections.activities.includes(i)?'<div style="margin-top:6px;color:#4ade80;font-size:12px;font-weight:600;">✓ AGREGADA</div>':''}
+      </div>
+    `).join('')}
+    ${(a.free_activities||[]).length?`<h4 style="font-size:15px;margin:16px 0 12px;">🆓 Gratis</h4>${(a.free_activities||[]).map(act=>`<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:10px;"><div style="font-weight:600;">${act.name} <span style="background:#065f46;color:#4ade80;padding:2px 6px;border-radius:4px;font-size:10px;">GRATIS</span></div><div style="color:#94a3b8;font-size:12px;margin-top:4px;">${act.description||''} · ⏱️ ${act.duration_hours}h</div></div>`).join('')}`:''}
+  `;
+}
+function toggleAct(i){const idx=selections.activities.indexOf(i);if(idx>-1)selections.activities.splice(idx,1);else selections.activities.push(i);screenResults('activities');}
 
-    function showScreen(id) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        document.getElementById('main-header').style.display = (id === 'screen-login') ? 'none' : 'flex';
-        document.getElementById('compare-bar').style.display = (id === 'screen-results') ? 'flex' : 'none';
-    }
 
-    async function register() {
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
-        const name = document.getElementById('login-name').value || 'Viajero';
-        try {
-            let res = await fetch(`${API}/api/v1/auth/register`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({email, password, name, language:'es'}) });
-            if (res.status === 409) return login();
-            const data = await res.json();
-            if (data.access_token) { token = data.access_token; showScreen('screen-destination'); }
-            else document.getElementById('login-error').textContent = data.detail || 'Error';
-        } catch(e) { document.getElementById('login-error').textContent = 'Error de conexión'; }
-    }
+// ─── TAB: MAP ──────────────────────────────────
+function tabMap(){
+  return `
+    <h3 style="font-size:20px;margin-bottom:16px;">🗺️ Mapa — ${(destData._name||'').split(',')[0]}</h3>
+    <div id="mapview" style="height:350px;border-radius:12px;margin-bottom:16px;"></div>
+    <div style="background:#1e293b;border-radius:10px;padding:14px;">
+      <div style="font-size:13px;color:#94a3b8;">📍 Pins: actividades imperdibles</div>
+      <div style="font-size:13px;color:#94a3b8;margin-top:4px;">🔴 Rojo = imperdibles &nbsp; 🔵 Centro de la ciudad</div>
+    </div>
+  `;
+}
+function initMap(){
+  const coords={'Tokyo':[35.6762,139.6503],'Paris':[48.8566,2.3522],'París':[48.8566,2.3522],'Bali':[-8.3405,115.092],'Rome':[41.9028,12.4964],'Roma':[41.9028,12.4964],'New York':[40.7128,-74.006],'Cancún':[21.1619,-86.8515],'Machu Picchu':[-13.1631,-72.545]};
+  const name=(destData._name||'').split(',')[0].trim();
+  const center=coords[name]||[35.6762,139.6503];
+  setTimeout(()=>{
+    const map=L.map('mapview').setView(center,12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map);
+    L.marker(center).addTo(map).bindPopup(`<b>${name}</b> — Centro`).openPopup();
+    const acts=(destData.activities||{}).must_do||[];
+    acts.forEach(a=>{if(a.latitude&&a.longitude) L.marker([a.latitude,a.longitude],{}).addTo(map).bindPopup(`<b>${a.name}</b><br>${a.description||''}`);});
+  },100);
+}
 
-    async function login() {
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
-        try {
-            const res = await fetch(`${API}/api/v1/auth/login`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({email, password}) });
-            const data = await res.json();
-            if (data.access_token) { token = data.access_token; showScreen('screen-destination'); }
-            else document.getElementById('login-error').textContent = data.detail || 'Email o contraseña incorrectos';
-        } catch(e) { document.getElementById('login-error').textContent = 'Error de conexión'; }
-    }
+// ─── TABS: CLIMATE, SAFETY, MONEY, COMPARE, ITINERARY ─
+function tabClimate(){
+  const c=destData.climate||{};
+  return `<h3 style="font-size:20px;margin-bottom:16px;">🌤️ Clima</h3>
+    <div style="background:#1e293b;border-radius:10px;padding:14px;margin-bottom:16px;text-align:center;"><strong>Mejor época:</strong> ${(c.best_months_to_visit||[]).join(', ')||'?'}</div>
+    <div style="display:flex;overflow-x:auto;gap:10px;padding-bottom:10px;">
+      ${(c.by_month||[]).map(m=>`<div style="min-width:120px;background:#1e293b;border:1px solid ${m.is_best_time?'#4ade80':'#334155'};border-radius:10px;padding:14px;text-align:center;flex-shrink:0;">
+        <div style="font-weight:600;font-size:13px;">${m.month}</div>
+        <div style="font-size:24px;margin:6px 0;">${m.avg_temp_celsius}°</div>
+        <div style="font-size:11px;color:#94a3b8;">🌧️ ${m.rain_days}d</div>
+        ${m.is_best_time?'<div style="background:#065f46;color:#4ade80;padding:2px 6px;border-radius:4px;font-size:10px;margin-top:4px;">✓</div>':''}
+      </div>`).join('')}
+    </div>
+    ${c.packing_essentials?`<div style="background:#1e293b;border-radius:10px;padding:14px;margin-top:12px;"><strong>🎒 Llevar:</strong><div style="color:#94a3b8;font-size:13px;margin-top:4px;">${c.packing_essentials.join(' · ')}</div></div>`:''}`;
+}
+function tabSafety(){
+  const s=destData.safety||{};const sc=s.safety_score||5;const col=sc>=8?'#4ade80':sc>=5?'#fbbf24':'#f87171';
+  return `<h3 style="font-size:20px;margin-bottom:16px;">🛡️ Seguridad</h3>
+    <div style="background:#1e293b;border-radius:12px;padding:20px;text-align:center;margin-bottom:16px;"><div style="font-size:48px;font-weight:700;color:${col};">${sc}/10</div></div>
+    <div style="background:#1e293b;border-radius:12px;padding:16px;font-size:13px;line-height:2;">
+      📋 Visa: ${s.visa_required?'<span style="color:#fbbf24;">Necesitás</span>':'<span style="color:#4ade80;">No necesitás</span>'}<br>
+      🚰 Agua: ${s.tap_water_safe?'<span style="color:#4ade80;">Potable</span>':'<span style="color:#f87171;">No potable</span>'}<br>
+      🚨 Emergencias: ${s.emergency_number||'?'}
+    </div>
+    ${(s.common_scams||[]).length?`<div style="background:#7f1d1d;border-radius:10px;padding:14px;margin-top:12px;"><div style="font-weight:600;color:#fca5a5;margin-bottom:6px;">⚠️ Estafas comunes</div><div style="font-size:12px;color:#fca5a5;">${s.common_scams.map(x=>'• '+x).join('<br>')}</div></div>`:''}
+    ${(s.tips||[]).map(t=>`<div style="background:#334155;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;color:#94a3b8;">💡 ${t}</div>`).join('')}`;
+}
+function tabMoney(){
+  const m=destData.money||{};
+  return `<h3 style="font-size:20px;margin-bottom:16px;">💰 Dinero</h3>
+    <div style="background:#1e293b;border-radius:12px;padding:20px;text-align:center;margin-bottom:16px;"><div style="color:#94a3b8;font-size:12px;">1 USD =</div><div style="font-size:32px;font-weight:700;color:#4ade80;">${m.exchange_rate_usd||'?'} ${m.currency_code||''}</div><div style="color:#94a3b8;font-size:13px;">${m.local_currency||''}</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      <div style="background:#1e293b;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:10px;color:#94a3b8;">🎒 MOCHILERO</div><div style="font-weight:700;color:#4ade80;font-size:18px;">USD ${m.budget_backpacker_usd||'?'}</div><div style="font-size:10px;color:#64748b;">/día</div></div>
+      <div style="background:#1e293b;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:10px;color:#94a3b8;">🏨 MEDIO</div><div style="font-weight:700;color:#38bdf8;font-size:18px;">USD ${m.budget_mid_usd||'?'}</div><div style="font-size:10px;color:#64748b;">/día</div></div>
+      <div style="background:#1e293b;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:10px;color:#94a3b8;">⭐ CONFORT</div><div style="font-weight:700;color:#818cf8;font-size:18px;">USD ${m.budget_comfort_usd||'?'}</div><div style="font-size:10px;color:#64748b;">/día</div></div>
+      <div style="background:#1e293b;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:10px;color:#94a3b8;">💎 LUJO</div><div style="font-weight:700;color:#f472b6;font-size:18px;">USD ${m.budget_luxury_usd||'?'}</div><div style="font-size:10px;color:#64748b;">/día</div></div>
+    </div>
+    <div style="background:#1e293b;border-radius:10px;padding:14px;font-size:13px;line-height:2;">
+      💳 Tarjeta: ${m.cards_accepted?'Aceptan':'Mejor efectivo'}<br>
+      🏧 Cajeros: ${m.atm_available?'Disponibles':'Difícil'}<br>
+      ${m.tipping_expected?'💰 Propina: Se espera':'🚫 Propina: No se deja'}
+    </div>
+    ${(m.tips||[]).map(t=>`<div style="background:#334155;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;color:#94a3b8;">💡 ${t}</div>`).join('')}`;
+}
+function tabCompare(){
+  const c=destData.comparisons||{};
+  return `<h3 style="font-size:20px;margin-bottom:16px;">📏 ¿Cuántos días ir?</h3>
+    <div style="display:flex;overflow-x:auto;gap:12px;padding-bottom:10px;">
+      ${(c.trip_by_duration||[]).map(t=>`<div style="min-width:260px;background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px;flex-shrink:0;">
+        <div style="text-align:center;"><div style="font-size:36px;font-weight:700;">${t.days}</div><div style="color:#94a3b8;font-size:12px;">días</div><div style="font-size:20px;font-weight:700;color:#4ade80;margin:8px 0;">USD ${t.total_cost_mid_usd}</div></div>
+        <div style="font-size:12px;color:#4ade80;margin-top:8px;">✅ ${(t.what_you_can_do||[]).join(', ')}</div>
+        ${(t.what_you_miss||[]).length?`<div style="font-size:12px;color:#f87171;margin-top:4px;">❌ ${t.what_you_miss.join(', ')}</div>`:''}
+        <div style="font-size:12px;color:#38bdf8;margin-top:6px;font-weight:600;">→ ${t.recommendation}</div>
+      </div>`).join('')}
+    </div>
+    ${(c.insights||[]).length?`<div style="margin-top:16px;">${c.insights.map(i=>`<div style="background:#334155;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;color:#fbbf24;">💡 ${i}</div>`).join('')}</div>`:''}`;
+}
+function tabItinerary(){
+  const its=destData.suggested_itineraries||[];
+  return `<h3 style="font-size:20px;margin-bottom:16px;">📋 Itinerarios sugeridos</h3>
+    ${its.map(it=>`<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;"><div style="font-weight:600;font-size:16px;">${it.title}</div><div style="color:#4ade80;font-weight:700;">USD ${it.total_cost_usd}</div></div>
+      <div style="margin:8px 0;"><span style="background:#1e3a5f;color:#38bdf8;padding:3px 8px;border-radius:6px;font-size:11px;">${it.days} días</span> <span style="background:#1e3a5f;color:#38bdf8;padding:3px 8px;border-radius:6px;font-size:11px;">${it.style}</span></div>
+      ${(it.daily_plan||[]).map(d=>`<div style="padding:10px 0;border-top:1px solid #334155;">
+        <div style="font-weight:600;font-size:13px;">Día ${d.day_number}: ${d.title}</div>
+        <div style="color:#94a3b8;font-size:12px;margin-top:4px;">${(d.activities||[]).join(' → ')}</div>
+        <div style="font-size:11px;color:#64748b;margin-top:4px;">💰 USD ${d.estimated_cost_usd} · 🚶 ${d.walking_km}km</div>
+      </div>`).join('')}
+    </div>`).join('')}`;
+}
 
-    function logout() { token = ''; showScreen('screen-login'); }
-
-    function selectDest(dest) { document.getElementById('dest-input').value = dest; explore(); }
-
-    async function explore() {
-        const destination = document.getElementById('dest-input').value;
-        if (!destination) return;
-        showScreen('screen-loading');
-        try {
-            const res = await fetch(`${API}/api/v1/destinations/explore`, { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`}, body: JSON.stringify({destination, from_city:'Buenos Aires', travelers:1, budget_usd:2500}) });
-            destData = await res.json();
-            destData._name = destination;
-            renderTabs();
-            switchTab('overview');
-            showScreen('screen-results');
-        } catch(e) { alert('Error cargando datos'); showScreen('screen-destination'); }
-    }
-
-    function renderTabs() {
-        document.getElementById('tabs-bar').innerHTML = TABS.map(t =>
-            `<div class="tab ${t.id===currentTab?'active':''}" onclick="switchTab('${t.id}')">${t.label}</div>`
-        ).join('');
-    }
-
-    function switchTab(id) {
-        currentTab = id;
-        renderTabs();
-        const fn = {
-            overview: renderOverview, flights: renderFlights, transport: renderTransport,
-            hotels: renderHotels, food: renderFood, activities: renderActivities,
-            climate: renderClimate, safety: renderSafety, money: renderMoney,
-            compare: renderCompare, itinerary: renderItinerary, map: renderMap
-        };
-        if (fn[id]) fn[id]();
-    }
-
-    function updateTotal() {
-        let total = 0;
-        if (selections.flight) total += selections.flight;
-        document.getElementById('total-cost').textContent = `USD ${total.toLocaleString()}`;
-    }
-
-    function renderOverview() {
-        const d = destData;
-        const qs = d.quick_stats || {};
-        document.getElementById('tab-content').innerHTML = `
-            <div class="section-title">📊 ${(d._name||'').split(',')[0]} — Resumen</div>
-            <div class="card">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div><div style="color:#94a3b8;font-size:12px;">Costo/día</div><div style="font-size:22px;font-weight:700;color:#4ade80;">USD ${qs.avg_cost_per_day_usd||'?'}</div></div>
-                    <div><div style="color:#94a3b8;font-size:12px;">Días ideales</div><div style="font-size:22px;font-weight:700;">${qs.ideal_days||'?'}</div></div>
-                    <div><div style="color:#94a3b8;font-size:12px;">Mínimo</div><div style="font-size:22px;font-weight:700;">${qs.min_days_recommended||'?'} días</div></div>
-                    <div><div style="color:#94a3b8;font-size:12px;">Mejor época</div><div style="font-size:14px;font-weight:600;">${qs.best_time_to_visit||'?'}</div></div>
-                </div>
-            </div>
-            <div class="section-title" style="margin-top:20px;">Explorá cada sección</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                ${TABS.filter(t=>t.id!=='overview').map(t=>`<div class="card" onclick="switchTab('${t.id}')" style="text-align:center;padding:20px;"><div style="font-size:28px;">${t.icon}</div><div style="margin-top:6px;font-size:13px;">${t.label.replace(/[^\w\s]/g,'').trim()}</div></div>`).join('')}
-            </div>
-        `;
-    }
-
-    function renderFlights() {
-        const f = destData.flights || {};
-        const opts = f.options || [];
-        document.getElementById('tab-content').innerHTML = `
-            <div class="section-title">✈️ Vuelos</div>
-            <div class="card" style="background:#0f172a;">
-                <div style="display:flex;justify-content:space-around;text-align:center;">
-                    <div><div style="color:#94a3b8;font-size:12px;">Más barato</div><div style="font-size:20px;font-weight:700;color:#4ade80;">USD ${f.cheapest_price||'?'}</div></div>
-                    <div><div style="color:#94a3b8;font-size:12px;">Más rápido</div><div style="font-size:20px;font-weight:700;color:#38bdf8;">${f.fastest_duration_hours||'?'}h</div></div>
-                </div>
-                <div style="text-align:center;margin-top:10px;color:#94a3b8;font-size:12px;">Mejor día para comprar: <strong style="color:white;">${f.best_day_to_buy||'?'}</strong></div>
-            </div>
-            <p style="color:#94a3b8;font-size:13px;margin-bottom:12px;">Tocá un vuelo para seleccionarlo:</p>
-            ${opts.map((o,i) => `
-                <div class="card ${selections.flight===o.price_usd?'selected':''}" onclick="selectFlight(${o.price_usd})">
-                    <div class="card-header">
-                        <div class="card-title">${o.airline}</div>
-                        <div class="card-price">USD ${o.price_usd}</div>
-                    </div>
-                    <div class="card-detail">
-                        ⏱️ ${o.duration_hours}h &nbsp; 
-                        ${o.stops===0?'<span class="badge badge-green">Directo</span>':`<span class="badge badge-yellow">${o.stops} escala${o.stops>1?'s':''}: ${(o.stop_cities||[]).join(', ')}</span>`}
-                        ${o.is_cheapest?'<span class="badge badge-green">Más barato</span>':''}
-                        ${o.is_fastest?'<span class="badge badge-blue">Más rápido</span>':''}
-                        <br>🧳 ${o.baggage_included?`${o.baggage_kg||23}kg incluido`:'Sin equipaje'}
-                    </div>
-                </div>
-            `).join('')}
-            ${(f.tips||[]).map(t=>`<div class="tip">${t}</div>`).join('')}
-        `;
-    }
-
-    function selectFlight(price) {
-        selections.flight = (selections.flight === price) ? null : price;
-        updateTotal();
-        renderFlights();
-    }
-
-    function renderTransport() {
-        const t = destData.transport || {};
-        document.getElementById('tab-content').innerHTML = `
-            <div class="section-title">🚇 Transporte</div>
-            <div class="section-title" style="font-size:15px;">Del aeropuerto al centro</div>
-            ${(t.airport_to_center||[]).map(r=>`
-                <div class="card">
-                    <div class="card-header"><div class="card-title">${r.method}</div><div class="card-price">USD ${r.cost_usd}</div></div>
-                    <div class="card-detail">⏱️ ${r.duration_minutes} min ${r.frequency?`&nbsp; 🔄 ${r.frequency}`:''}</div>
-                </div>
-            `).join('')}
-            <div class="section-title" style="font-size:15px;margin-top:20px;">🎫 Pases turísticos</div>
-            ${(t.passes_available||[]).map(p=>`
-                <div class="card">
-                    <div class="card-header"><div class="card-title">${p.name}</div><div class="card-price">USD ${p.price_usd}</div></div>
-                    <div class="card-detail">📅 ${p.duration_days} días<br>✅ Cubre: ${(p.covers||[]).join(', ')}<br>💡 ${p.worth_it_if}</div>
-                </div>
-            `).join('')}
-            <div style="margin-top:16px;padding:14px;background:#1e293b;border-radius:10px;">
-                <div style="margin-bottom:8px;font-weight:600;">Mejor opción por presupuesto:</div>
-                <div style="color:#4ade80;font-size:14px;">${t.best_option_budget||'—'}</div>
-                <div style="margin-top:10px;font-weight:600;">Mejor opción por comodidad:</div>
-                <div style="color:#38bdf8;font-size:14px;">${t.best_option_comfort||'—'}</div>
-            </div>
-            ${(t.tips||[]).map(tip=>`<div class="tip">${tip}</div>`).join('')}
-        `;
-    }
-
-    function renderHotels() {
-        const a = destData.accommodation || {};
-        document.getElementById('tab-content').innerHTML = `
-            <div class="section-title">🏨 Alojamiento</div>
-            <div class="card" style="background:#0f172a;">
-                <div style="display:flex;justify-content:space-around;text-align:center;">
-                    <div><div style="color:#94a3b8;font-size:11px;">Budget</div><div style="font-weight:700;color:#4ade80;">USD ${a.avg_price_budget||'?'}</div><div style="font-size:11px;color:#64748b;">/noche</div></div>
-                    <div><div style="color:#94a3b8;font-size:11px;">Medio</div><div style="font-weight:700;color:#38bdf8;">USD ${a.avg_price_mid||'?'}</div><div style="font-size:11px;color:#64748b;">/noche</div></div>
-                    <div><div style="color:#94a3b8;font-size:11px;">Lujo</div><div style="font-weight:700;color:#818cf8;">USD ${a.avg_price_luxury||'?'}</div><div style="font-size:11px;color:#64748b;">/noche</div></div>
-                </div>
-            </div>
-            <p style="color:#94a3b8;font-size:13px;margin-bottom:12px;">Zonas recomendadas (tocá para seleccionar):</p>
-            ${(a.recommended_zones||[]).map(z=>`
-                <div class="card ${selections.hotel_zone===z.name?'selected':''}" onclick="selectHotel('${z.name}')">
-                    <div class="card-header"><div class="card-title">${z.name}</div><div class="card-price">USD ${z.avg_price_per_night_usd}/n</div></div>
-                    <div class="card-detail">${z.description}<br><br>
-                        <span style="color:#4ade80;">✓ ${(z.pros||[]).join(' · ')}</span><br>
-                        <span style="color:#f87171;">✗ ${(z.cons||[]).join(' · ')}</span>
-                    </div>
-                    <div style="margin-top:8px;"><span class="badge badge-blue">${z.type}</span></div>
-                </div>
-            `).join('')}
-            ${(a.tips||[]).map(t=>`<div class="tip">${t}</div>`).join('')}
-        `;
-    }
-
-    function selectHotel(name) {
-        selections.hotel_zone = (selections.hotel_zone === name) ? null : name;
-        renderHotels();
-    }
-
-    function renderFood() {
-        const f = destData.food || {};
-        document.getElementById('tab-content').innerHTML = `
-            <div class="section-title">🍜 Gastronomía</div>
-            <div class="card" style="background:#0f172a;">
-                <div style="display:flex;justify-content:space-around;text-align:center;">
-                    <div><div style="color:#94a3b8;font-size:11px;">Street food</div><div style="font-weight:700;color:#4ade80;">USD ${f.avg_meal_budget_usd||'?'}</div></div>
-                    <div><div style="color:#94a3b8;font-size:11px;">Restaurante</div><div style="font-weight:700;color:#38bdf8;">USD ${f.avg_meal_mid_usd||'?'}</div></div>
-                    <div><div style="color:#94a3b8;font-size:11px;">Fine dining</div><div style="font-weight:700;color:#818cf8;">USD ${f.avg_meal_luxury_usd||'?'}</div></div>
-                </div>
-            </div>
-            <div style="margin:12px 0;padding:12px;background:#713f12;border-radius:8px;font-size:13px;color:#fbbf24;">💡 Propina: ${f.tipping_culture||'Sin datos'}</div>
-            <div class="section-title" style="font-size:15px;">⭐ Platos imperdibles</div>
-            ${(f.typical_dishes||[]).filter(d=>d.is_must_try).map(d=>`
-                <div class="card">
-                    <div class="card-header"><div class="card-title">${d.name}</div><div class="card-price">USD ${d.avg_price_usd}</div></div>
-                    <div class="card-detail">${d.description} ${d.vegetarian?'<span class="badge badge-green">🌱 Vegetariano</span>':''}</div>
-                </div>
-            `).join('')}
-            <div class="section-title" style="font-size:15px;margin-top:16px;">Otros platos</div>
-            ${(f.typical_dishes||[]).filter(d=>!d.is_must_try).map(d=>`
-                <div class="card">
-                    <div class="card-header"><div class="card-title">${d.name}</div><div class="card-price">USD ${d.avg_price_usd}</div></div>
-                    <div class="card-detail">${d.description}</div>
-                </div>
-            `).join('')}
-            ${(f.markets||[]).length?`<div class="section-title" style="font-size:15px;margin-top:16px;">🛒 Mercados</div>${f.markets.map(m=>`<div class="card"><div class="card-title">${m}</div></div>`).join('')}`:''}
-            ${(f.tips||[]).map(t=>`<div class="tip">${t}</div>`).join('')}
-        `;
-    }
-
-    function renderActivities() {
-        const a = destData.activities || {};
-        document.getElementById('tab-content').innerHTML = `
-            <div class="section-title">🎯 Actividades (${a.total_count||'?'} en total)</div>
-            <p style="color:#94a3b8;font-size:13px;margin-bottom:12px;">Tocá para agregar a tu viaje:</p>
-            <div class="section-title" style="font-size:15px;">⭐ Imperdibles</div>
-            ${(a.must_do||[]).map((act,i)=>`
-                <div class="card ${selections.activities.includes(i)?'selected':''}" onclick="toggleActivity(${i})">
-                    <div class="card-header">
-                        <div class="card-title">${act.name}</div>
-                        <div>${act.is_free?'<span class="badge badge-green">GRATIS</span>':`<span class="card-price">USD ${act.cost_usd}</span>`}</div>
-                    </div>
-                    <div class="card-detail">
-                        ${act.description}<br>
-                        ⏱️ ${act.duration_hours}h &nbsp; ⭐ ${act.rating||'?'}/5
-                        ${act.best_time_to_visit?`<br>🕐 Mejor: ${act.best_time_to_visit}`:''}
-                        ${act.reservation_required?'<br><span class="badge badge-yellow">Reserva necesaria</span>':''}
-                    </div>
-                </div>
-            `).join('')}
-            ${(a.free_activities||[]).length?`
-                <div class="section-title" style="font-size:15px;margin-top:16px;">🆓 Gratis</div>
-                ${a.free_activities.map(act=>`
-                    <div class="card"><div class="card-header"><div class="card-title">${act.name}</div><span class="badge badge-green">GRATIS</span></div>
-                    <div class="card-detail">${act.description} — ⏱️ ${act.duration_hours}h</div></div>
-                `).join('')}
-            `:''}
-            ${(a.tips||[]).map(t=>`<div class="tip">${t}</div>`).join('')}
-        `;
-    }
-
-    function toggleActivity(i) {
-        const idx = selections.activities.indexOf(i);
-        if (idx > -1) selections.activities.splice(idx, 1);
-        else selections.activities.push(i);
-        renderActivities();
-    }
-
-    function renderClimate() {
-        const c = destData.climate || {};
-        document.getElementById('tab-content').innerHTML = `
-            <div class="section-title">🌤️ Clima</div>
-            <div class="card" style="background:#0f172a;">
-                <div style="text-align:center;"><strong>Mejor época:</strong> ${(c.best_months_to_visit||[]).join(', ')||'?'}</div>
-            </div>
-            <div class="slider">
-                ${(c.by_month||[]).map(m=>`
-                    <div class="slider-card card ${m.is_best_time?'selected':''}">
-                        <div style="text-align:center;">
-                            <div style="font-weight:700;">${m.month}</div>
-                            <div style="font-size:28px;margin:8px 0;">${m.avg_temp_celsius||'?'}°C</div>
-                            <div style="font-size:12px;color:#94a3b8;">🌧️ ${m.rain_days} días lluvia</div>
-                            <div style="font-size:12px;color:#94a3b8;margin-top:4px;">👕 ${m.what_to_wear||''}</div>
-                            ${m.is_best_time?'<div class="badge badge-green" style="margin-top:8px;">Recomendado</div>':''}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-            ${c.rainy_season?`<div style="margin-top:12px;padding:12px;background:#7f1d1d;border-radius:8px;font-size:13px;color:#fca5a5;">🌧️ Temporada de lluvias: ${c.rainy_season}</div>`:''}
-            ${c.packing_essentials?`<div class="card" style="margin-top:12px;"><div class="card-title">🎒 Qué llevar</div><div class="card-detail" style="margin-top:8px;">${c.packing_essentials.join(' · ')}</div></div>`:''}
-        `;
-    }
-
-    function renderSafety() {
-        const s = destData.safety || {};
-        const score = s.safety_score || 5;
-        const color = score >= 8 ? '#4ade80' : score >= 5 ? '#fbbf24' : '#f87171';
-        document.getElementById('tab-content').innerHTML = `
-            <div class="section-title">🛡️ Seguridad</div>
-            <div class="card" style="text-align:center;">
-                <div style="font-size:48px;font-weight:700;color:${color};">${score}/10</div>
-                <div style="color:#94a3b8;font-size:13px;">Nivel de seguridad</div>
-            </div>
-            <div class="card">
-                <div class="card-detail">
-                    <div style="margin-bottom:8px;">📋 <strong>Visa:</strong> ${s.visa_required?`<span class="badge badge-yellow">Necesitás visa</span> ${s.visa_type||''}`:'<span class="badge badge-green">No necesitás visa</span>'}</div>
-                    <div style="margin-bottom:8px;">💉 <strong>Vacunas:</strong> ${(s.vaccines_required||[]).length?s.vaccines_required.join(', '):'Ninguna obligatoria'}</div>
-                    <div style="margin-bottom:8px;">🚰 <strong>Agua potable:</strong> ${s.tap_water_safe?'<span class="badge badge-green">Sí, segura</span>':'<span class="badge badge-red">No, comprá embotellada</span>'}</div>
-                    <div style="margin-bottom:8px;">🏳️‍🌈 <strong>LGBTQ+:</strong> ${s.lgbtq_friendly?'<span class="badge badge-green">Friendly</span>':'<span class="badge badge-yellow">Precaución</span>'}</div>
-                    <div>🚨 <strong>Emergencias:</strong> ${s.emergency_number||'?'}</div>
-                </div>
-            </div>
-            ${(s.common_scams||[]).length?`<div class="card"><div class="card-title" style="color:#fbbf24;">⚠️ Estafas comunes</div><div class="card-detail" style="margin-top:8px;">${s.common_scams.map(sc=>`• ${sc}`).join('<br>')}</div></div>`:''}
-            ${(s.dangerous_zones||[]).length?`<div class="card"><div class="card-title" style="color:#f87171;">🚫 Zonas a evitar</div><div class="card-detail" style="margin-top:8px;">${s.dangerous_zones.join(', ')}</div></div>`:''}
-            ${(s.tips||[]).map(t=>`<div class="tip">${t}</div>`).join('')}
-        `;
-    }
-
-    function renderMoney() {
-        const m = destData.money || {};
-        document.getElementById('tab-content').innerHTML = `
-            <div class="section-title">💰 Dinero</div>
-            <div class="card" style="text-align:center;">
-                <div style="font-size:14px;color:#94a3b8;">1 USD =</div>
-                <div style="font-size:32px;font-weight:700;color:#4ade80;">${m.exchange_rate_usd||'?'} ${m.currency_code||''}</div>
-                <div style="font-size:13px;color:#94a3b8;">${m.local_currency||''}</div>
-            </div>
-            <div class="card">
-                <div class="card-title">Presupuesto diario</div>
-                <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                    <div style="padding:10px;background:#0f172a;border-radius:8px;text-align:center;"><div style="font-size:12px;color:#94a3b8;">🎒 Mochilero</div><div style="font-weight:700;color:#4ade80;">USD ${m.budget_backpacker_usd||'?'}</div></div>
-                    <div style="padding:10px;background:#0f172a;border-radius:8px;text-align:center;"><div style="font-size:12px;color:#94a3b8;">🏨 Medio</div><div style="font-weight:700;color:#38bdf8;">USD ${m.budget_mid_usd||'?'}</div></div>
-                    <div style="padding:10px;background:#0f172a;border-radius:8px;text-align:center;"><div style="font-size:12px;color:#94a3b8;">⭐ Confort</div><div style="font-weight:700;color:#818cf8;">USD ${m.budget_comfort_usd||'?'}</div></div>
-                    <div style="padding:10px;background:#0f172a;border-radius:8px;text-align:center;"><div style="font-size:12px;color:#94a3b8;">💎 Lujo</div><div style="font-weight:700;color:#f472b6;">USD ${m.budget_luxury_usd||'?'}</div></div>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-detail">
-                    💳 <strong>Tarjeta:</strong> ${m.cards_accepted?'Aceptan':'Preferible efectivo'}<br>
-                    💵 <strong>Efectivo:</strong> ${m.cash_preferred?'Preferido en muchos lugares':'No es necesario'}<br>
-                    🏧 <strong>Cajeros:</strong> ${m.atm_available?'Disponibles':'Difícil de encontrar'}<br>
-                    ${m.tipping_expected?'💰 <strong>Propina:</strong> Se espera':'🚫 <strong>Propina:</strong> No se deja'}
-                </div>
-            </div>
-            ${(m.tips||[]).map(t=>`<div class="tip">${t}</div>`).join('')}
-        `;
-    }
-
-    function renderCompare() {
-        const c = destData.comparisons || {};
-        document.getElementById('tab-content').innerHTML = `
-            <div class="section-title">📏 ¿Cuántos días ir?</div>
-            <div class="slider">
-                ${(c.trip_by_duration||[]).map(t=>`
-                    <div class="slider-card card">
-                        <div style="text-align:center;">
-                            <div style="font-size:36px;font-weight:700;">${t.days}</div>
-                            <div style="color:#94a3b8;font-size:13px;">días</div>
-                            <div style="font-size:20px;font-weight:700;color:#4ade80;margin:10px 0;">USD ${t.total_cost_mid_usd}</div>
-                        </div>
-                        <div class="card-detail">
-                            <div style="color:#4ade80;margin-bottom:4px;">✅ ${(t.what_you_can_do||[]).join(', ')}</div>
-                            ${(t.what_you_miss||[]).length?`<div style="color:#f87171;">❌ Te perdés: ${t.what_you_miss.join(', ')}</div>`:''}
-                            <div style="color:#38bdf8;margin-top:6px;font-weight:600;">→ ${t.recommendation}</div>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-            ${(c.insights||[]).length?`
-                <div class="section-title" style="font-size:15px;margin-top:20px;">💡 Insights</div>
-                ${c.insights.map(i=>`<div class="tip">${i}</div>`).join('')}
-            `:''}
-        `;
-    }
-
-    function renderItinerary() {
-        const its = destData.suggested_itineraries || [];
-        document.getElementById('tab-content').innerHTML = `
-            <div class="section-title">📋 Itinerarios sugeridos</div>
-            ${its.map(it=>`
-                <div class="card">
-                    <div class="card-header"><div class="card-title">${it.title}</div><div class="card-price">USD ${it.total_cost_usd}</div></div>
-                    <div style="margin:8px 0;"><span class="badge badge-blue">${it.days} días</span> <span class="badge badge-blue">${it.style}</span> ${(it.best_for||[]).map(b=>`<span class="badge">${b}</span>`).join('')}</div>
-                    ${(it.daily_plan||[]).map(d=>`
-                        <div style="padding:10px 0;border-top:1px solid #334155;">
-                            <div style="font-weight:600;font-size:14px;">Día ${d.day_number}: ${d.title}</div>
-                            <div style="color:#94a3b8;font-size:13px;margin-top:4px;">${(d.activities||[]).join(' → ')}</div>
-                            <div style="font-size:12px;color:#64748b;margin-top:4px;">💰 USD ${d.estimated_cost_usd} · 🚶 ${d.walking_km}km</div>
-                        </div>
-                    `).join('')}
-                </div>
-            `).join('')}
-        `;
-    }
-
-    function renderMap() {
-        const coords = { 'Tokyo': [35.6762, 139.6503], 'Paris': [48.8566, 2.3522], 'Bali': [-8.3405, 115.0920], 'Rome': [41.9028, 12.4964], 'New York': [40.7128, -74.0060], 'Machu Picchu': [-13.1631, -72.5450] };
-        const name = (destData._name||'').split(',')[0].trim();
-        const center = coords[name] || [35.6762, 139.6503];
-        
-        document.getElementById('tab-content').innerHTML = `
-            <div class="section-title">🗺️ Mapa interactivo</div>
-            <div id="map"></div>
-            <div class="card"><div class="card-detail" style="color:#94a3b8;">📍 Pins: actividades imperdibles del destino.<br>En la versión completa se verán rutas, zonas de hotel y transporte.</div></div>
-        `;
-        
-        setTimeout(() => {
-            const map = L.map('map').setView(center, 12);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-            
-            // Add markers for activities
-            const activities = (destData.activities||{}).must_do || [];
-            activities.forEach(a => {
-                if (a.latitude && a.longitude) {
-                    L.marker([a.latitude, a.longitude]).addTo(map).bindPopup(`<b>${a.name}</b><br>${a.description||''}`);
-                }
-            });
-            
-            // Main marker
-            L.marker(center).addTo(map).bindPopup(`<b>${name}</b>`).openPopup();
-        }, 100);
-    }
-
-    function nextStep() {
-        alert('🚀 Próximo paso: Reservar y armar tu itinerario personalizado.\n\nEsta función estará disponible en el Sprint 2.');
-    }
-    </script>
+// ─── INIT ──────────────────────────────────────
+screenLogin();
+</script>
 </body>
 </html>
