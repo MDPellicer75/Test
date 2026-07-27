@@ -7,6 +7,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from pathlib import Path
 
 from app.core.config import settings
 from app.db.database import engine
@@ -67,6 +69,11 @@ app.add_middleware(
 
 # Health (no prefix)
 app.include_router(health_router)
+
+# Frontend
+@app.get("/app", include_in_schema=False)
+async def serve_frontend():
+    return FileResponse(Path(__file__).parent.parent / "frontend.html")
 
 # API v1
 app.include_router(auth_router, prefix="/api/v1")
