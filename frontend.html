@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TravelOS</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css"/>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
@@ -22,6 +22,8 @@ let destData = {};
 let userName = '';
 let fromCity = 'Buenos Aires';
 let selections = {flight:null, hotel:null, activities:[]};
+const MAPBOX_TOKEN = new URLSearchParams(window.location.search).get('tk') || localStorage.getItem('mapbox_tk') || '';
+if(MAPBOX_TOKEN) { mapboxgl.accessToken = MAPBOX_TOKEN; localStorage.setItem('mapbox_tk', MAPBOX_TOKEN); }
 
 
 // ─── RENDER ENGINE ─────────────────────────────
@@ -428,52 +430,78 @@ function tabMap(){
   return `
     <h3 style="font-size:20px;margin-bottom:16px;">🗺️ ${fromCity} → ${name}</h3>
     <div style="display:flex;gap:8px;margin-bottom:12px;">
-      <button onclick="showMapMode('flight')" id="btn-flight" style="flex:1;padding:10px;border:1px solid #38bdf8;border-radius:8px;background:#1e3a5f;color:#38bdf8;cursor:pointer;font-size:12px;font-weight:600;">✈️ Ruta vuelo</button>
-      <button onclick="showMapMode('city')" id="btn-city" style="flex:1;padding:10px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#94a3b8;cursor:pointer;font-size:12px;">🏙️ Ciudad</button>
-      <button onclick="showMapMode('activities')" id="btn-acts" style="flex:1;padding:10px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#94a3b8;cursor:pointer;font-size:12px;">🎯 Actividades</button>
+      <button onclick="showMapMode('flight')" style="flex:1;padding:10px;border:1px solid ${currentMapMode==='flight'?'#38bdf8':'#334155'};border-radius:8px;background:${currentMapMode==='flight'?'#1e3a5f':'#1e293b'};color:${currentMapMode==='flight'?'#38bdf8':'#94a3b8'};cursor:pointer;font-size:12px;font-weight:600;">✈️ Ruta vuelo</button>
+      <button onclick="showMapMode('city')" style="flex:1;padding:10px;border:1px solid ${currentMapMode==='city'?'#38bdf8':'#334155'};border-radius:8px;background:${currentMapMode==='city'?'#1e3a5f':'#1e293b'};color:${currentMapMode==='city'?'#38bdf8':'#94a3b8'};cursor:pointer;font-size:12px;">🏙️ Ciudad</button>
+      <button onclick="showMapMode('activities')" style="flex:1;padding:10px;border:1px solid ${currentMapMode==='activities'?'#38bdf8':'#334155'};border-radius:8px;background:${currentMapMode==='activities'?'#1e3a5f':'#1e293b'};color:${currentMapMode==='activities'?'#38bdf8':'#94a3b8'};cursor:pointer;font-size:12px;">🎯 Actividades</button>
     </div>
     <div id="mapview" style="height:400px;border-radius:12px;margin-bottom:16px;"></div>
     <div style="background:#1e293b;border-radius:10px;padding:14px;font-size:12px;color:#94a3b8;">
-      <div>🔵 Tu ciudad de origen: <strong style="color:white;">${fromCity}</strong></div>
+      <div>🔵 Tu ciudad: <strong style="color:white;">${fromCity}</strong></div>
       <div style="margin-top:4px;">🔴 Destino: <strong style="color:white;">${name}</strong></div>
-      <div style="margin-top:4px;">📍 Puntos: actividades imperdibles</div>
-      <div style="margin-top:4px;">✈️ Línea: ruta de vuelo</div>
+      <div style="margin-top:4px;">✈️ Línea curva: ruta de vuelo</div>
     </div>
   `;
 }
 let currentMapMode='flight';
-function showMapMode(mode){currentMapMode=mode;initMap();}
+function showMapMode(mode){currentMapMode=mode;screenResults('map');}
 function initMap(){
-  const destCoords={'Tokyo':[35.6762,139.6503],'Paris':[48.8566,2.3522],'París':[48.8566,2.3522],'Bali':[-8.3405,115.092],'Rome':[41.9028,12.4964],'Roma':[41.9028,12.4964],'New York':[40.7128,-74.006],'Cancún':[21.1619,-86.8515],'Machu Picchu':[-13.1631,-72.545],'London':[51.5074,-0.1278],'Londres':[51.5074,-0.1278],'Barcelona':[41.3851,2.1734],'Bangkok':[13.7563,100.5018],'Francia':[48.8566,2.3522],'Italia':[41.9028,12.4964],'Japón':[35.6762,139.6503]};
-  const fromCoords={'Buenos Aires':[-34.6037,-58.3816],'Córdoba':[-31.4201,-64.1888],'Rosario':[-32.9468,-60.6393],'Mendoza':[-32.8895,-68.8458],'Madrid':[40.4168,-3.7038],'México':[-19.4326,-99.1332],'Bogotá':[4.711,-74.0721],'Lima':[-12.0464,-77.0428],'Santiago':[-33.4489,-70.6693],'São Paulo':[-23.5505,-46.6333],'Miami':[25.7617,-80.1918]};
+  const destCoords={'Tokyo':[139.6503,35.6762],'Paris':[2.3522,48.8566],'París':[2.3522,48.8566],'Bali':[115.092,-8.3405],'Rome':[12.4964,41.9028],'Roma':[12.4964,41.9028],'New York':[-74.006,40.7128],'Cancún':[-86.8515,21.1619],'Machu Picchu':[-72.545,-13.1631],'London':[-0.1278,51.5074],'Londres':[-0.1278,51.5074],'Barcelona':[2.1734,41.3851],'Bangkok':[100.5018,13.7563],'Francia':[2.3522,48.8566],'Italia':[12.4964,41.9028],'Japón':[139.6503,35.6762]};
+  const fromCoords={'Buenos Aires':[-58.3816,-34.6037],'Córdoba':[-64.1888,-31.4201],'Rosario':[-60.6393,-32.9468],'Mendoza':[-68.8458,-32.8895],'Madrid':[-3.7038,40.4168],'México':[-99.1332,19.4326],'Bogotá':[-74.0721,4.711],'Lima':[-77.0428,-12.0464],'Santiago':[-70.6693,-33.4489],'São Paulo':[-46.6333,-23.5505],'Miami':[-80.1918,25.7617]};
   const name=(destData._name||'').split(',')[0].trim();
-  const dest=destCoords[name]||[48.8566,2.3522];
-  const origin=fromCoords[fromCity]||[-34.6037,-58.3816];
+  const dest=destCoords[name]||[2.3522,48.8566];
+  const origin=fromCoords[fromCity]||[-58.3816,-34.6037];
   setTimeout(()=>{
     const el=document.getElementById('mapview');
     if(!el)return;
     el.innerHTML='';
     if(currentMapMode==='flight'){
-      const map=L.map('mapview').setView([0,0],2);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map);
-      const blueIcon=L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',iconSize:[25,41],iconAnchor:[12,41]});
-      const redIcon=L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',iconSize:[25,41],iconAnchor:[12,41]});
-      L.marker(origin,{icon:blueIcon}).addTo(map).bindPopup(`<b>🔵 ${fromCity}</b><br>Tu origen`);
-      L.marker(dest,{icon:redIcon}).addTo(map).bindPopup(`<b>🔴 ${name}</b><br>Tu destino`);
-      L.polyline([origin,dest],{color:'#38bdf8',weight:3,dashArray:'10 6',opacity:0.8}).addTo(map);
-      map.fitBounds([origin,dest],{padding:[50,50]});
+      const map=new mapboxgl.Map({container:'mapview',style:'mapbox://styles/mapbox/dark-v11',center:[0,20],zoom:1.5});
+      map.on('load',()=>{
+        new mapboxgl.Marker({color:'#38bdf8'}).setLngLat(origin).setPopup(new mapboxgl.Popup().setHTML(`<b>📍 ${fromCity}</b><br>Tu origen`)).addTo(map);
+        new mapboxgl.Marker({color:'#f87171'}).setLngLat(dest).setPopup(new mapboxgl.Popup().setHTML(`<b>📍 ${name}</b><br>Tu destino`)).addTo(map);
+        // Curved flight line
+        const points=[];
+        for(let i=0;i<=100;i++){
+          const t=i/100;
+          const lng=origin[0]+(dest[0]-origin[0])*t;
+          const lat=origin[1]+(dest[1]-origin[1])*t+Math.sin(Math.PI*t)*15;
+          points.push([lng,lat]);
+        }
+        map.addSource('route',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:points}}});
+        map.addLayer({id:'route',type:'line',source:'route',paint:{'line-color':'#38bdf8','line-width':3,'line-dasharray':[2,2]}});
+        const bounds=new mapboxgl.LngLatBounds();
+        bounds.extend(origin);bounds.extend(dest);
+        map.fitBounds(bounds,{padding:80});
+      });
     } else if(currentMapMode==='city'){
-      const map=L.map('mapview').setView(dest,13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map);
-      L.marker(dest).addTo(map).bindPopup(`<b>${name}</b> — Centro`).openPopup();
-      const zones=(destData.accommodation||{}).recommended_zones||[];
-      zones.forEach((z,i)=>{const offset=[[0.01,0.01],[-0.01,0.01],[0.01,-0.01]][i]||[0,0];L.circle([dest[0]+offset[0],dest[1]+offset[1]],{radius:800,color:'#818cf8',fillOpacity:0.15}).addTo(map).bindPopup(`<b>🏨 ${z.name}</b><br>USD ${z.avg_price_per_night_usd}/noche`);});
+      const map=new mapboxgl.Map({container:'mapview',style:'mapbox://styles/mapbox/dark-v11',center:dest,zoom:13});
+      map.on('load',()=>{
+        new mapboxgl.Marker({color:'#38bdf8'}).setLngLat(dest).setPopup(new mapboxgl.Popup().setHTML(`<b>${name}</b> — Centro`)).addTo(map);
+        const zones=(destData.accommodation||{}).recommended_zones||[];
+        const colors=['#818cf8','#4ade80','#f472b6','#fbbf24'];
+        zones.forEach((z,i)=>{
+          const offset=[[0.008,0.005],[-0.006,0.008],[0.005,-0.007],[-0.008,-0.005]][i]||[0,0];
+          const pos=[dest[0]+offset[1],dest[1]+offset[0]];
+          new mapboxgl.Marker({color:colors[i%colors.length]}).setLngLat(pos).setPopup(new mapboxgl.Popup().setHTML(`<b>🏨 ${z.name}</b><br>USD ${z.avg_price_per_night_usd}/noche<br>${z.description||''}`)).addTo(map);
+        });
+        const hotels=(destData.accommodation||{}).hotels||[];
+        hotels.forEach(h=>{
+          if(h.longitude&&h.latitude){
+            new mapboxgl.Marker({color:'#fbbf24',scale:0.7}).setLngLat([h.longitude,h.latitude]).setPopup(new mapboxgl.Popup().setHTML(`<b>🏨 ${h.name}</b><br>USD ${h.price_per_night_usd}/noche<br>⭐ ${h.rating||'?'}/5`)).addTo(map);
+          }
+        });
+      });
     } else {
-      const map=L.map('mapview').setView(dest,13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map);
-      L.marker(dest).addTo(map).bindPopup(`<b>${name}</b>`);
-      const acts=(destData.activities||{}).must_do||[];
-      acts.forEach(a=>{if(a.latitude&&a.longitude){const redIcon=L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',iconSize:[25,41],iconAnchor:[12,41]});L.marker([a.latitude,a.longitude],{icon:redIcon}).addTo(map).bindPopup(`<b>${a.name}</b><br>${a.description||''}<br>⏱️ ${a.duration_hours}h ${a.is_free?'| GRATIS':`| USD ${a.cost_usd}`}`);}});
+      const map=new mapboxgl.Map({container:'mapview',style:'mapbox://styles/mapbox/dark-v11',center:dest,zoom:13});
+      map.on('load',()=>{
+        new mapboxgl.Marker({color:'#38bdf8'}).setLngLat(dest).setPopup(new mapboxgl.Popup().setHTML(`<b>${name}</b>`)).addTo(map);
+        const acts=(destData.activities||{}).must_do||[];
+        acts.forEach(a=>{
+          if(a.latitude&&a.longitude){
+            new mapboxgl.Marker({color:'#f87171',scale:0.8}).setLngLat([a.longitude,a.latitude]).setPopup(new mapboxgl.Popup().setHTML(`<b>${a.name}</b><br>${a.description||''}<br>⏱️ ${a.duration_hours}h ${a.is_free?'| GRATIS':`| USD ${a.cost_usd}`}`)).addTo(map);
+          }
+        });
+      });
     }
   },100);
 }
@@ -557,53 +585,50 @@ function changeOrigin(){
 
 // ─── HOTEL MAP ─────────────────────────────────
 function initHotelMap(){
-  const destCoords={'Tokyo':[35.6762,139.6503],'Paris':[48.8566,2.3522],'París':[48.8566,2.3522],'Bali':[-8.3405,115.092],'Rome':[41.9028,12.4964],'Roma':[41.9028,12.4964],'New York':[40.7128,-74.006],'Cancún':[21.1619,-86.8515],'Machu Picchu':[-13.1631,-72.545],'London':[51.5074,-0.1278],'Londres':[51.5074,-0.1278],'Barcelona':[41.3851,2.1734],'Bangkok':[13.7563,100.5018],'Francia':[48.8566,2.3522]};
+  const destCoords={'Tokyo':[139.6503,35.6762],'Paris':[2.3522,48.8566],'París':[2.3522,48.8566],'Bali':[115.092,-8.3405],'Rome':[12.4964,41.9028],'Roma':[12.4964,41.9028],'New York':[-74.006,40.7128],'Cancún':[-86.8515,21.1619],'Machu Picchu':[-72.545,-13.1631],'London':[-0.1278,51.5074],'Londres':[-0.1278,51.5074],'Barcelona':[2.1734,41.3851],'Bangkok':[100.5018,13.7563],'Francia':[2.3522,48.8566]};
   const name=(destData._name||'').split(',')[0].trim();
-  const center=destCoords[name]||[48.8566,2.3522];
+  const center=destCoords[name]||[2.3522,48.8566];
   setTimeout(()=>{
     const el=document.getElementById('hotel-map');
     if(!el)return;
-    const map=L.map('hotel-map').setView(center,13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map);
-    // Plot individual hotels if available
-    const hotels=(destData.accommodation||{}).hotels||[];
-    const goldIcon=L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png',shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',iconSize:[25,41],iconAnchor:[12,41]});
-    if(hotels.length){
+    el.innerHTML='';
+    const map=new mapboxgl.Map({container:'hotel-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:13});
+    map.on('load',()=>{
+      const hotels=(destData.accommodation||{}).hotels||[];
       hotels.forEach(h=>{
-        if(h.latitude&&h.longitude){
-          L.marker([h.latitude,h.longitude],{icon:goldIcon}).addTo(map).bindPopup(`<b>🏨 ${h.name}</b><br>USD ${h.price_per_night_usd}/noche<br>⭐ ${h.rating||'?'}/5<br>${h.type||'hotel'} · ${h.zone||''}`);
+        if(h.longitude&&h.latitude){
+          new mapboxgl.Marker({color:'#fbbf24',scale:0.7}).setLngLat([h.longitude,h.latitude]).setPopup(new mapboxgl.Popup().setHTML(`<b>🏨 ${h.name}</b><br><span style="color:#4ade80;font-weight:700;">USD ${h.price_per_night_usd}/noche</span><br>⭐ ${h.rating||'?'}/5 · ${h.type||''}<br>📍 ${h.zone||''}`)).addTo(map);
         }
       });
-    }
-    // Also plot zones as circles
-    const zones=(destData.accommodation||{}).recommended_zones||[];
-    const colors=['#818cf8','#4ade80','#f472b6','#fbbf24','#38bdf8'];
-    zones.forEach((z,i)=>{
-      const offset=[[0.008,0.005],[-0.006,0.008],[0.005,-0.007],[-0.008,-0.005],[0.01,0.002]][i]||[0,0];
-      const pos=[center[0]+offset[0],center[1]+offset[1]];
-      L.circle(pos,{radius:500,color:colors[i%colors.length],fillColor:colors[i%colors.length],fillOpacity:0.1,weight:2}).addTo(map).bindPopup(`<b>${z.name}</b><br>USD ${z.avg_price_per_night_usd}/noche`);
+      const zones=(destData.accommodation||{}).recommended_zones||[];
+      const colors=['#818cf8','#4ade80','#f472b6','#fbbf24'];
+      zones.forEach((z,i)=>{
+        const offset=[[0.008,0.005],[-0.006,0.008],[0.005,-0.007],[-0.008,-0.005]][i]||[0,0];
+        const pos=[center[0]+offset[1],center[1]+offset[0]];
+        new mapboxgl.Marker({color:colors[i%colors.length]}).setLngLat(pos).setPopup(new mapboxgl.Popup().setHTML(`<b>${z.name}</b><br>USD ${z.avg_price_per_night_usd}/noche<br>${z.description||''}`)).addTo(map);
+      });
     });
   },100);
 }
 
 // ─── ACTIVITIES MAP ────────────────────────────
 function initActivitiesMap(){
-  const destCoords={'Tokyo':[35.6762,139.6503],'Paris':[48.8566,2.3522],'París':[48.8566,2.3522],'Bali':[-8.3405,115.092],'Rome':[41.9028,12.4964],'Roma':[41.9028,12.4964],'New York':[40.7128,-74.006],'Cancún':[21.1619,-86.8515],'Machu Picchu':[-13.1631,-72.545],'London':[51.5074,-0.1278],'Londres':[51.5074,-0.1278],'Barcelona':[41.3851,2.1734],'Bangkok':[13.7563,100.5018],'Francia':[48.8566,2.3522]};
+  const destCoords={'Tokyo':[139.6503,35.6762],'Paris':[2.3522,48.8566],'París':[2.3522,48.8566],'Bali':[115.092,-8.3405],'Rome':[12.4964,41.9028],'Roma':[12.4964,41.9028],'New York':[-74.006,40.7128],'Cancún':[-86.8515,21.1619],'Machu Picchu':[-72.545,-13.1631],'London':[-0.1278,51.5074],'Londres':[-0.1278,51.5074],'Barcelona':[2.1734,41.3851],'Bangkok':[100.5018,13.7563],'Francia':[2.3522,48.8566]};
   const name=(destData._name||'').split(',')[0].trim();
-  const center=destCoords[name]||[48.8566,2.3522];
+  const center=destCoords[name]||[2.3522,48.8566];
   setTimeout(()=>{
     const el=document.getElementById('activities-map');
     if(!el)return;
-    const map=L.map('activities-map').setView(center,13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map);
-    const acts=(destData.activities||{}).must_do||[];
-    const redIcon=L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',iconSize:[25,41],iconAnchor:[12,41]});
-    acts.forEach(a=>{
-      if(a.latitude&&a.longitude){
-        L.marker([a.latitude,a.longitude],{icon:redIcon}).addTo(map).bindPopup(`<b>${a.name}</b><br>${a.description||''}<br>⏱️ ${a.duration_hours}h ${a.is_free?'| GRATIS':`| USD ${a.cost_usd}`}`);
-      }
+    el.innerHTML='';
+    const map=new mapboxgl.Map({container:'activities-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:13});
+    map.on('load',()=>{
+      const acts=(destData.activities||{}).must_do||[];
+      acts.forEach(a=>{
+        if(a.latitude&&a.longitude){
+          new mapboxgl.Marker({color:'#f87171',scale:0.8}).setLngLat([a.longitude,a.latitude]).setPopup(new mapboxgl.Popup().setHTML(`<b>${a.name}</b><br>${a.description||''}<br>⏱️ ${a.duration_hours}h ${a.is_free?'| GRATIS':`| USD ${a.cost_usd}`}`)).addTo(map);
+        }
+      });
     });
-    L.marker(center).addTo(map).bindPopup(`<b>${name}</b> — Centro`);
   },100);
 }
 
