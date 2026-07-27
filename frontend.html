@@ -84,7 +84,7 @@ function screenDestination(){
   render(`
     <div style="background:#1e293b;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #334155;">
       <h1 style="font-size:20px;background:linear-gradient(90deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">TravelOS</h1>
-      <span style="color:#94a3b8;font-size:13px;">Desde: <strong style="color:white;">${fromCity}</strong> &nbsp; <span onclick="screenLogin()" style="color:#f87171;cursor:pointer;">Salir</span></span>
+      <span style="color:#94a3b8;font-size:13px;">📍 <strong style="color:white;">${fromCity}</strong> &nbsp; <span onclick="changeOrigin()" style="color:#38bdf8;cursor:pointer;text-decoration:underline;">Cambiar</span> &nbsp; <span onclick="screenLogin()" style="color:#f87171;cursor:pointer;">Salir</span></span>
     </div>
     <div style="max-width:600px;margin:0 auto;padding:20px;">
       <div style="position:relative;margin-top:10px;">
@@ -356,25 +356,57 @@ function toggleAct(i){const idx=selections.activities.indexOf(i);if(idx>-1)selec
 
 // ─── TAB: MAP ──────────────────────────────────
 function tabMap(){
+  const name=(destData._name||'').split(',')[0];
   return `
-    <h3 style="font-size:20px;margin-bottom:16px;">🗺️ Mapa — ${(destData._name||'').split(',')[0]}</h3>
-    <div id="mapview" style="height:350px;border-radius:12px;margin-bottom:16px;"></div>
-    <div style="background:#1e293b;border-radius:10px;padding:14px;">
-      <div style="font-size:13px;color:#94a3b8;">📍 Pins: actividades imperdibles</div>
-      <div style="font-size:13px;color:#94a3b8;margin-top:4px;">🔴 Rojo = imperdibles &nbsp; 🔵 Centro de la ciudad</div>
+    <h3 style="font-size:20px;margin-bottom:16px;">🗺️ ${fromCity} → ${name}</h3>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <button onclick="showMapMode('flight')" id="btn-flight" style="flex:1;padding:10px;border:1px solid #38bdf8;border-radius:8px;background:#1e3a5f;color:#38bdf8;cursor:pointer;font-size:12px;font-weight:600;">✈️ Ruta vuelo</button>
+      <button onclick="showMapMode('city')" id="btn-city" style="flex:1;padding:10px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#94a3b8;cursor:pointer;font-size:12px;">🏙️ Ciudad</button>
+      <button onclick="showMapMode('activities')" id="btn-acts" style="flex:1;padding:10px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#94a3b8;cursor:pointer;font-size:12px;">🎯 Actividades</button>
+    </div>
+    <div id="mapview" style="height:400px;border-radius:12px;margin-bottom:16px;"></div>
+    <div style="background:#1e293b;border-radius:10px;padding:14px;font-size:12px;color:#94a3b8;">
+      <div>🔵 Tu ciudad de origen: <strong style="color:white;">${fromCity}</strong></div>
+      <div style="margin-top:4px;">🔴 Destino: <strong style="color:white;">${name}</strong></div>
+      <div style="margin-top:4px;">📍 Puntos: actividades imperdibles</div>
+      <div style="margin-top:4px;">✈️ Línea: ruta de vuelo</div>
     </div>
   `;
 }
+let currentMapMode='flight';
+function showMapMode(mode){currentMapMode=mode;initMap();}
 function initMap(){
-  const coords={'Tokyo':[35.6762,139.6503],'Paris':[48.8566,2.3522],'París':[48.8566,2.3522],'Bali':[-8.3405,115.092],'Rome':[41.9028,12.4964],'Roma':[41.9028,12.4964],'New York':[40.7128,-74.006],'Cancún':[21.1619,-86.8515],'Machu Picchu':[-13.1631,-72.545]};
+  const destCoords={'Tokyo':[35.6762,139.6503],'Paris':[48.8566,2.3522],'París':[48.8566,2.3522],'Bali':[-8.3405,115.092],'Rome':[41.9028,12.4964],'Roma':[41.9028,12.4964],'New York':[40.7128,-74.006],'Cancún':[21.1619,-86.8515],'Machu Picchu':[-13.1631,-72.545],'London':[51.5074,-0.1278],'Londres':[51.5074,-0.1278],'Barcelona':[41.3851,2.1734],'Bangkok':[13.7563,100.5018],'Francia':[48.8566,2.3522],'Italia':[41.9028,12.4964],'Japón':[35.6762,139.6503]};
+  const fromCoords={'Buenos Aires':[-34.6037,-58.3816],'Córdoba':[-31.4201,-64.1888],'Rosario':[-32.9468,-60.6393],'Mendoza':[-32.8895,-68.8458],'Madrid':[40.4168,-3.7038],'México':[-19.4326,-99.1332],'Bogotá':[4.711,-74.0721],'Lima':[-12.0464,-77.0428],'Santiago':[-33.4489,-70.6693],'São Paulo':[-23.5505,-46.6333],'Miami':[25.7617,-80.1918]};
   const name=(destData._name||'').split(',')[0].trim();
-  const center=coords[name]||[35.6762,139.6503];
+  const dest=destCoords[name]||[48.8566,2.3522];
+  const origin=fromCoords[fromCity]||[-34.6037,-58.3816];
   setTimeout(()=>{
-    const map=L.map('mapview').setView(center,12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map);
-    L.marker(center).addTo(map).bindPopup(`<b>${name}</b> — Centro`).openPopup();
-    const acts=(destData.activities||{}).must_do||[];
-    acts.forEach(a=>{if(a.latitude&&a.longitude) L.marker([a.latitude,a.longitude],{}).addTo(map).bindPopup(`<b>${a.name}</b><br>${a.description||''}`);});
+    const el=document.getElementById('mapview');
+    if(!el)return;
+    el.innerHTML='';
+    if(currentMapMode==='flight'){
+      const map=L.map('mapview').setView([0,0],2);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map);
+      const blueIcon=L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',iconSize:[25,41],iconAnchor:[12,41]});
+      const redIcon=L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',iconSize:[25,41],iconAnchor:[12,41]});
+      L.marker(origin,{icon:blueIcon}).addTo(map).bindPopup(`<b>🔵 ${fromCity}</b><br>Tu origen`);
+      L.marker(dest,{icon:redIcon}).addTo(map).bindPopup(`<b>🔴 ${name}</b><br>Tu destino`);
+      L.polyline([origin,dest],{color:'#38bdf8',weight:3,dashArray:'10 6',opacity:0.8}).addTo(map);
+      map.fitBounds([origin,dest],{padding:[50,50]});
+    } else if(currentMapMode==='city'){
+      const map=L.map('mapview').setView(dest,13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map);
+      L.marker(dest).addTo(map).bindPopup(`<b>${name}</b> — Centro`).openPopup();
+      const zones=(destData.accommodation||{}).recommended_zones||[];
+      zones.forEach((z,i)=>{const offset=[[0.01,0.01],[-0.01,0.01],[0.01,-0.01]][i]||[0,0];L.circle([dest[0]+offset[0],dest[1]+offset[1]],{radius:800,color:'#818cf8',fillOpacity:0.15}).addTo(map).bindPopup(`<b>🏨 ${z.name}</b><br>USD ${z.avg_price_per_night_usd}/noche`);});
+    } else {
+      const map=L.map('mapview').setView(dest,13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map);
+      L.marker(dest).addTo(map).bindPopup(`<b>${name}</b>`);
+      const acts=(destData.activities||{}).must_do||[];
+      acts.forEach(a=>{if(a.latitude&&a.longitude){const redIcon=L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',iconSize:[25,41],iconAnchor:[12,41]});L.marker([a.latitude,a.longitude],{icon:redIcon}).addTo(map).bindPopup(`<b>${a.name}</b><br>${a.description||''}<br>⏱️ ${a.duration_hours}h ${a.is_free?'| GRATIS':`| USD ${a.cost_usd}`}`);}});
+    }
   },100);
 }
 
@@ -447,6 +479,12 @@ function tabItinerary(){
         <div style="font-size:11px;color:#64748b;margin-top:4px;">💰 USD ${d.estimated_cost_usd} · 🚶 ${d.walking_km}km</div>
       </div>`).join('')}
     </div>`).join('')}`;
+}
+
+// ─── CHANGE ORIGIN ─────────────────────────────
+function changeOrigin(){
+  const newCity=prompt('¿Desde qué ciudad viajás?',fromCity);
+  if(newCity&&newCity.trim()){fromCity=newCity.trim();screenDestination();}
 }
 
 // ─── INIT ──────────────────────────────────────
