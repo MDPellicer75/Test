@@ -98,7 +98,20 @@ Generá un JSON con TODA esta información real y actualizada:
         "method": "train/bus/taxi",
         "duration_minutes": XX,
         "cost_usd": XX,
-        "frequency": "cada X min"
+        "frequency": "cada X min",
+        "is_fastest": true/false,
+        "is_cheapest": true/false,
+        "comfort_level": "alto/medio/bajo"
+      }}
+    ],
+    "common_routes": [
+      {{
+        "from": "lugar A",
+        "to": "lugar B",
+        "options": [
+          {{"method": "metro", "duration_minutes": XX, "cost_usd": XX, "is_best": true}},
+          {{"method": "taxi", "duration_minutes": XX, "cost_usd": XX, "is_best": false}}
+        ]
       }}
     ],
     "internal_options": ["Metro", "Bus", "Taxi"],
@@ -111,9 +124,9 @@ Generá un JSON con TODA esta información real y actualizada:
         "worth_it_if": "explicación"
       }}
     ],
-    "best_option_budget": "descripción",
-    "best_option_comfort": "descripción",
-    "best_option_speed": "descripción",
+    "best_option_budget": "descripción completa",
+    "best_option_comfort": "descripción completa",
+    "best_option_speed": "descripción completa",
     "uber_available": true/false,
     "walkable_city": true/false,
     "tips": ["consejo"]
@@ -128,6 +141,19 @@ Generá un JSON con TODA esta información real y actualizada:
         "avg_price_per_night_usd": XX,
         "pros": ["pro1"],
         "cons": ["con1"]
+      }}
+    ],
+    "hotels": [
+      {{
+        "name": "nombre real del hotel/hostel",
+        "zone": "barrio donde está",
+        "type": "hotel/hostel/apartment/boutique/luxury",
+        "price_per_night_usd": XX,
+        "rating": X.X,
+        "highlights": ["wifi", "breakfast", "pool"],
+        "best_for": "parejas/solo/familias/mochileros",
+        "latitude": XX.XXXX,
+        "longitude": XX.XXXX
       }}
     ],
     "avg_price_budget": XX,
@@ -271,12 +297,16 @@ REGLAS:
 - Usá datos REALES y actualizados
 - Precios reales del mercado actual
 - Mínimo 5 opciones de vuelo
-- Mínimo 3 zonas de alojamiento
+- Mínimo 5 zonas de alojamiento
+- Mínimo 10 hoteles/hostels REALES con nombre, precio, rating y coordenadas
+- Incluí opciones desde hostels baratos hasta hoteles de lujo
 - Mínimo 10 platos típicos
-- Mínimo 15 actividades
+- Mínimo 15 actividades con coordenadas (latitude, longitude)
 - Los 12 meses de clima
 - Mínimo 3 itinerarios sugeridos (budget, comfort, adventure)
 - Comparaciones para 3, 5, 7 y 10 días
+- En transporte incluí mínimo 3 rutas comunes (aeropuerto-centro, centro-atracciones)
+- Cada ruta de transporte debe tener mínimo 2 opciones (barata vs rápida)
 - Todo en español
 - NO inventar URLs
 - Respondé SOLO el JSON, sin texto adicional"""

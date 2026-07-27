@@ -256,14 +256,55 @@ function selectFlight(p){selections.flight=(selections.flight===p)?null:p;screen
 function tabTransport(){
   const t=destData.transport||{};
   return `
-    <h3 style="font-size:20px;margin-bottom:16px;">🚇 Transporte en destino</h3>
-    <h4 style="color:#94a3b8;font-size:14px;margin-bottom:12px;">Del aeropuerto al centro:</h4>
+    <h3 style="font-size:20px;margin-bottom:16px;">🚇 Transporte</h3>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <div style="flex:1;background:#065f46;border:1px solid #4ade80;border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-size:10px;color:#4ade80;">💰 MÁS BARATO</div>
+        <div style="font-size:12px;color:#4ade80;margin-top:4px;">${t.best_option_budget||'?'}</div>
+      </div>
+      <div style="flex:1;background:#1e3a5f;border:1px solid #38bdf8;border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-size:10px;color:#38bdf8;">⚡ MÁS RÁPIDO</div>
+        <div style="font-size:12px;color:#38bdf8;margin-top:4px;">${t.best_option_speed||'?'}</div>
+      </div>
+      <div style="flex:1;background:#312e81;border:1px solid #818cf8;border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-size:10px;color:#818cf8;">⭐ MÁS CÓMODO</div>
+        <div style="font-size:12px;color:#818cf8;margin-top:4px;">${t.best_option_comfort||'?'}</div>
+      </div>
+    </div>
+    <h4 style="color:#94a3b8;font-size:14px;margin-bottom:12px;">✈️ → 🏙️ Del aeropuerto al centro:</h4>
     ${(t.airport_to_center||[]).map(r=>`
-      <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
-        <div><div style="font-weight:600;">${r.method}</div><div style="color:#94a3b8;font-size:12px;margin-top:4px;">⏱️ ${r.duration_minutes} min ${r.frequency?`· 🔄 ${r.frequency}`:''}</div></div>
-        <div style="color:#4ade80;font-weight:700;font-size:18px;">USD ${r.cost_usd}</div>
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-weight:600;">${r.method}</div>
+            <div style="color:#94a3b8;font-size:12px;margin-top:4px;">⏱️ ${r.duration_minutes} min ${r.frequency?`· 🔄 ${r.frequency}`:''}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="color:#4ade80;font-weight:700;font-size:18px;">USD ${r.cost_usd}</div>
+            <div style="font-size:10px;margin-top:2px;">
+              ${r.is_cheapest?'<span style="background:#065f46;color:#4ade80;padding:2px 6px;border-radius:4px;">💰 Más barato</span>':''}
+              ${r.is_fastest?'<span style="background:#1e3a5f;color:#38bdf8;padding:2px 6px;border-radius:4px;">⚡ Más rápido</span>':''}
+            </div>
+          </div>
+        </div>
       </div>
     `).join('')}
+    ${(t.common_routes||[]).length?`
+      <h4 style="color:#94a3b8;font-size:14px;margin:20px 0 12px;">🗺️ Rutas comunes:</h4>
+      ${t.common_routes.map(r=>`
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:10px;">
+          <div style="font-weight:600;font-size:14px;margin-bottom:8px;">📍 ${r.from} → ${r.to}</div>
+          ${(r.options||[]).map(o=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid #334155;">
+              <div style="font-size:13px;">${o.method}</div>
+              <div style="font-size:13px;">⏱️ ${o.duration_minutes} min</div>
+              <div style="color:#4ade80;font-weight:600;">USD ${o.cost_usd}</div>
+              ${o.is_best?'<span style="background:#065f46;color:#4ade80;padding:2px 6px;border-radius:4px;font-size:10px;">Mejor</span>':''}
+            </div>
+          `).join('')}
+        </div>
+      `).join('')}
+    `:''}
     <h4 style="color:#94a3b8;font-size:14px;margin:20px 0 12px;">🎫 Pases turísticos:</h4>
     ${(t.passes_available||[]).map(p=>`
       <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:10px;">
@@ -272,19 +313,22 @@ function tabTransport(){
         <div style="color:#38bdf8;font-size:12px;margin-top:4px;">💡 ${p.worth_it_if}</div>
       </div>
     `).join('')}
-    <div style="background:#1e293b;border-radius:10px;padding:14px;margin-top:16px;">
-      <div style="margin-bottom:8px;"><strong>Mejor por presupuesto:</strong> <span style="color:#4ade80;">${t.best_option_budget||'?'}</span></div>
-      <div><strong>Mejor por comodidad:</strong> <span style="color:#38bdf8;">${t.best_option_comfort||'?'}</span></div>
-    </div>
     ${(t.tips||[]).map(tip=>`<div style="background:#334155;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;color:#94a3b8;">💡 ${tip}</div>`).join('')}
   `;
 }
 
 
 // ─── TAB: HOTELS ───────────────────────────────
+let hotelFilter='all'; // all, budget, mid, luxury
 function tabHotels(){
   const a=destData.accommodation||{};
-  const name=(destData._name||'').split(',')[0].trim();
+  const hotels=a.hotels||[];
+  const filtered=hotelFilter==='all'?hotels:hotels.filter(h=>{
+    if(hotelFilter==='budget') return h.price_per_night_usd<=80;
+    if(hotelFilter==='mid') return h.price_per_night_usd>80&&h.price_per_night_usd<=200;
+    if(hotelFilter==='luxury') return h.price_per_night_usd>200;
+    return true;
+  });
   return `
     <h3 style="font-size:20px;margin-bottom:16px;">🏨 Alojamiento</h3>
     <div style="display:flex;gap:8px;margin-bottom:16px;">
@@ -293,17 +337,36 @@ function tabHotels(){
       <div style="flex:1;background:#1e293b;border-radius:10px;padding:12px;text-align:center;"><div style="color:#94a3b8;font-size:10px;">LUJO</div><div style="font-weight:700;color:#818cf8;">USD ${a.avg_price_luxury||'?'}</div><div style="font-size:10px;color:#64748b;">/noche</div></div>
     </div>
     <div id="hotel-map" style="height:250px;border-radius:12px;margin-bottom:16px;"></div>
-    <p style="color:#94a3b8;font-size:13px;margin-bottom:12px;">Tocá una zona para seleccionar:</p>
-    ${(a.recommended_zones||[]).map(z=>`
-      <div onclick="selections.hotel=(selections.hotel==='${z.name}')?null:'${z.name}';screenResults('hotels')" style="background:#1e293b;border:2px solid ${selections.hotel===z.name?'#4ade80':'#334155'};border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;${selections.hotel===z.name?'box-shadow:0 0 15px rgba(74,222,128,0.2);':''}">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div style="font-weight:600;font-size:16px;">${z.name}</div>
-          <div style="color:#4ade80;font-weight:700;">USD ${z.avg_price_per_night_usd}/n</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button onclick="hotelFilter='all';screenResults('hotels')" style="flex:1;padding:8px;border:1px solid ${hotelFilter==='all'?'#38bdf8':'#334155'};border-radius:8px;background:${hotelFilter==='all'?'#1e3a5f':'#1e293b'};color:${hotelFilter==='all'?'#38bdf8':'#94a3b8'};cursor:pointer;font-size:12px;">Todos</button>
+      <button onclick="hotelFilter='budget';screenResults('hotels')" style="flex:1;padding:8px;border:1px solid ${hotelFilter==='budget'?'#4ade80':'#334155'};border-radius:8px;background:${hotelFilter==='budget'?'#065f46':'#1e293b'};color:${hotelFilter==='budget'?'#4ade80':'#94a3b8'};cursor:pointer;font-size:12px;">💰 Barato</button>
+      <button onclick="hotelFilter='mid';screenResults('hotels')" style="flex:1;padding:8px;border:1px solid ${hotelFilter==='mid'?'#38bdf8':'#334155'};border-radius:8px;background:${hotelFilter==='mid'?'#1e3a5f':'#1e293b'};color:${hotelFilter==='mid'?'#38bdf8':'#94a3b8'};cursor:pointer;font-size:12px;">⭐ Medio</button>
+      <button onclick="hotelFilter='luxury';screenResults('hotels')" style="flex:1;padding:8px;border:1px solid ${hotelFilter==='luxury'?'#818cf8':'#334155'};border-radius:8px;background:${hotelFilter==='luxury'?'#312e81':'#1e293b'};color:${hotelFilter==='luxury'?'#818cf8':'#94a3b8'};cursor:pointer;font-size:12px;">💎 Lujo</button>
+    </div>
+    ${hotels.length?`
+      <p style="color:#94a3b8;font-size:13px;margin-bottom:12px;">${filtered.length} opciones${hotelFilter!=='all'?' (filtrado)':''}:</p>
+      ${filtered.map(h=>`
+        <div onclick="selections.hotel=(selections.hotel==='${h.name}')?null:'${h.name}';screenResults('hotels')" style="background:#1e293b;border:2px solid ${selections.hotel===h.name?'#4ade80':'#334155'};border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;${selections.hotel===h.name?'box-shadow:0 0 15px rgba(74,222,128,0.2);':''}">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-weight:600;font-size:15px;">${h.name}</div>
+            <div style="color:#4ade80;font-weight:700;">USD ${h.price_per_night_usd}/n</div>
+          </div>
+          <div style="color:#94a3b8;font-size:12px;margin-top:6px;">
+            📍 ${h.zone||'?'} · ⭐ ${h.rating||'?'}/5 · ${h.type||'hotel'}
+          </div>
+          <div style="margin-top:6px;font-size:11px;">${(h.highlights||[]).map(x=>`<span style="background:#334155;padding:2px 6px;border-radius:4px;margin-right:4px;">${x}</span>`).join('')}</div>
+          <div style="color:#64748b;font-size:11px;margin-top:4px;">👤 Mejor para: ${h.best_for||'todos'}</div>
+          ${selections.hotel===h.name?'<div style="margin-top:6px;color:#4ade80;font-size:12px;font-weight:600;">✓ SELECCIONADO</div>':''}
         </div>
-        <div style="color:#94a3b8;font-size:13px;margin-top:6px;">${z.description}</div>
-        <div style="margin-top:8px;font-size:12px;"><span style="color:#4ade80;">✓ ${(z.pros||[]).join(' · ')}</span></div>
-        <div style="font-size:12px;"><span style="color:#f87171;">✗ ${(z.cons||[]).join(' · ')}</span></div>
-        ${selections.hotel===z.name?'<div style="margin-top:8px;color:#4ade80;font-size:12px;font-weight:600;">✓ SELECCIONADO</div>':''}
+      `).join('')}
+    `:''}
+    <h4 style="font-size:15px;margin:16px 0 12px;">📍 Zonas recomendadas</h4>
+    ${(a.recommended_zones||[]).map(z=>`
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">${z.name}</div><div style="color:#4ade80;">USD ${z.avg_price_per_night_usd}/n</div></div>
+        <div style="color:#94a3b8;font-size:12px;margin-top:4px;">${z.description}</div>
+        <div style="font-size:11px;margin-top:4px;"><span style="color:#4ade80;">✓ ${(z.pros||[]).join(' · ')}</span></div>
+        <div style="font-size:11px;"><span style="color:#f87171;">✗ ${(z.cons||[]).join(' · ')}</span></div>
       </div>
     `).join('')}
     ${(a.tips||[]).map(t=>`<div style="background:#334155;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;color:#94a3b8;">💡 ${t}</div>`).join('')}
@@ -502,13 +565,23 @@ function initHotelMap(){
     if(!el)return;
     const map=L.map('hotel-map').setView(center,13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(map);
+    // Plot individual hotels if available
+    const hotels=(destData.accommodation||{}).hotels||[];
+    const goldIcon=L.icon({iconUrl:'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png',shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',iconSize:[25,41],iconAnchor:[12,41]});
+    if(hotels.length){
+      hotels.forEach(h=>{
+        if(h.latitude&&h.longitude){
+          L.marker([h.latitude,h.longitude],{icon:goldIcon}).addTo(map).bindPopup(`<b>🏨 ${h.name}</b><br>USD ${h.price_per_night_usd}/noche<br>⭐ ${h.rating||'?'}/5<br>${h.type||'hotel'} · ${h.zone||''}`);
+        }
+      });
+    }
+    // Also plot zones as circles
     const zones=(destData.accommodation||{}).recommended_zones||[];
     const colors=['#818cf8','#4ade80','#f472b6','#fbbf24','#38bdf8'];
     zones.forEach((z,i)=>{
       const offset=[[0.008,0.005],[-0.006,0.008],[0.005,-0.007],[-0.008,-0.005],[0.01,0.002]][i]||[0,0];
       const pos=[center[0]+offset[0],center[1]+offset[1]];
-      L.circle(pos,{radius:600,color:colors[i%colors.length],fillColor:colors[i%colors.length],fillOpacity:0.2,weight:2}).addTo(map).bindPopup(`<b>🏨 ${z.name}</b><br>USD ${z.avg_price_per_night_usd}/noche<br>${z.description||''}<br><span style="color:green;">${(z.pros||[]).join(', ')}</span>`);
-      L.marker(pos).addTo(map).bindPopup(`<b>${z.name}</b><br>USD ${z.avg_price_per_night_usd}/noche`);
+      L.circle(pos,{radius:500,color:colors[i%colors.length],fillColor:colors[i%colors.length],fillOpacity:0.1,weight:2}).addTo(map).bindPopup(`<b>${z.name}</b><br>USD ${z.avg_price_per_night_usd}/noche`);
     });
   },100);
 }
