@@ -298,8 +298,8 @@ REGLAS:
 - Precios reales del mercado actual
 - Mínimo 5 opciones de vuelo
 - Mínimo 5 zonas de alojamiento
-- Mínimo 10 hoteles/hostels REALES con nombre, precio, rating y coordenadas
-- Incluí opciones desde hostels baratos hasta hoteles de lujo
+- Mínimo 15 hoteles/hostels REALES con nombre, precio, rating y coordenadas (latitude, longitude)
+- Incluí opciones desde hostels USD 20/noche hasta hoteles 5 estrellas USD 500+/noche
 - Mínimo 10 platos típicos
 - Mínimo 15 actividades con coordenadas (latitude, longitude)
 - Los 12 meses de clima

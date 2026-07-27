@@ -93,6 +93,26 @@ function screenDestination(){
         <span style="position:absolute;left:15px;top:16px;font-size:20px;">🌍</span>
         <input id="dest-input" type="text" placeholder="¿A dónde querés ir?" style="width:100%;padding:16px 16px 16px 45px;border:1px solid #334155;border-radius:12px;background:#0f172a;color:white;font-size:18px;outline:none;" onkeypress="if(event.key==='Enter')doExplore()">
       </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <div style="flex:1;">
+          <label style="color:#94a3b8;font-size:11px;">Adultos</label>
+          <select id="sel-adults" style="width:100%;padding:10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:white;font-size:14px;margin-top:4px;">
+            <option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label style="color:#94a3b8;font-size:11px;">Niños</label>
+          <select id="sel-kids" style="width:100%;padding:10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:white;font-size:14px;margin-top:4px;">
+            <option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label style="color:#94a3b8;font-size:11px;">Clase</label>
+          <select id="sel-class" style="width:100%;padding:10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:white;font-size:14px;margin-top:4px;">
+            <option value="economy">Económica</option><option value="premium">Premium</option><option value="business">Business</option><option value="first">Primera</option>
+          </select>
+        </div>
+      </div>
       <p style="color:#64748b;margin-top:24px;font-size:14px;font-weight:600;">Destinos populares</p>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;">
         ${[
@@ -116,26 +136,51 @@ function screenDestination(){
 
 
 // ─── EXPLORE ───────────────────────────────────
+let destCache = {};
 async function doExplore(dest){
   const destination = dest || document.getElementById('dest-input').value;
   if(!destination) return;
   
+  const adults = document.getElementById('sel-adults')?.value || '2';
+  const kids = document.getElementById('sel-kids')?.value || '0';
+  const flightClass = document.getElementById('sel-class')?.value || 'economy';
+  const travelers = parseInt(adults) + parseInt(kids);
+  const cacheKey = `${destination}_${fromCity}_${travelers}_${flightClass}`;
+
+  // Check cache
+  if(destCache[cacheKey]){
+    destData = destCache[cacheKey];
+    destData._name = destination;
+    destData._from = fromCity;
+    destData._adults = adults;
+    destData._kids = kids;
+    destData._class = flightClass;
+    selections = {flight:null, hotel:null, activities:[]};
+    screenResults('overview');
+    return;
+  }
+
   // Loading screen
   render(`
     <div style="text-align:center;padding:100px 20px;">
       <div style="width:50px;height:50px;border:4px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 20px;"></div>
       <h3>Analizando ${destination}...</h3>
-      <p style="color:#94a3b8;margin-top:10px;">Buscando vuelos desde ${fromCity}, hoteles, rutas, actividades y más</p>
+      <p style="color:#94a3b8;margin-top:10px;">Buscando vuelos desde ${fromCity} para ${travelers} pasajero${travelers>1?'s':''} (${flightClass})</p>
+      <p style="color:#64748b;margin-top:8px;font-size:12px;">La próxima vez será instantáneo</p>
       <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     </div>
   `);
 
   try{
-    const r=await fetch(`${API}/api/v1/destinations/explore`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({destination,from_city:fromCity,travelers:1,budget_usd:2500})});
+    const r=await fetch(`${API}/api/v1/destinations/explore`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({destination,from_city:fromCity,travelers:travelers,budget_usd:2500})});
     if(r.status===401){screenLogin('Sesión expirada. Logueate de nuevo.');return;}
     destData=await r.json();
     destData._name=destination;
     destData._from=fromCity;
+    destData._adults=adults;
+    destData._kids=kids;
+    destData._class=flightClass;
+    destCache[cacheKey]=destData; // Cache it
     selections={flight:null,hotel:null,activities:[]};
     screenResults('overview');
   }catch(e){screenLogin('Error de conexión');}
@@ -182,6 +227,7 @@ function screenResults(tab){
   if(tab==='map') initMap();
   if(tab==='hotels') initHotelMap();
   if(tab==='activities') initActivitiesMap();
+  if(tab==='transport') initTransportMap();
 }
 
 
@@ -259,6 +305,7 @@ function tabTransport(){
   const t=destData.transport||{};
   return `
     <h3 style="font-size:20px;margin-bottom:16px;">🚇 Transporte</h3>
+    <div id="transport-map" style="height:250px;border-radius:12px;margin-bottom:16px;"></div>
     <div style="display:flex;gap:8px;margin-bottom:16px;">
       <div style="flex:1;background:#065f46;border:1px solid #4ade80;border-radius:10px;padding:12px;text-align:center;">
         <div style="font-size:10px;color:#4ade80;">💰 MÁS BARATO</div>
@@ -581,6 +628,29 @@ function tabItinerary(){
 function changeOrigin(){
   const newCity=prompt('¿Desde qué ciudad viajás?',fromCity);
   if(newCity&&newCity.trim()){fromCity=newCity.trim();screenDestination();}
+}
+
+// ─── TRANSPORT MAP ──────────────────────────────
+function initTransportMap(){
+  const destCoords={'Tokyo':[139.6503,35.6762],'Paris':[2.3522,48.8566],'París':[2.3522,48.8566],'Bali':[115.092,-8.3405],'Rome':[12.4964,41.9028],'Roma':[12.4964,41.9028],'New York':[-74.006,40.7128],'Cancún':[-86.8515,21.1619],'Machu Picchu':[-72.545,-13.1631],'London':[-0.1278,51.5074],'Londres':[-0.1278,51.5074],'Barcelona':[2.1734,41.3851],'Bangkok':[100.5018,13.7563],'Francia':[2.3522,48.8566]};
+  const name=(destData._name||'').split(',')[0].trim();
+  const center=destCoords[name]||[2.3522,48.8566];
+  // Offset for airport (slightly outside center)
+  const airport=[center[0]+0.15,center[1]+0.05];
+  setTimeout(()=>{
+    const el=document.getElementById('transport-map');
+    if(!el)return;
+    el.innerHTML='';
+    const map=new mapboxgl.Map({container:'transport-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:11});
+    map.on('load',()=>{
+      new mapboxgl.Marker({color:'#f87171'}).setLngLat(airport).setPopup(new mapboxgl.Popup().setHTML(`<b>✈️ Aeropuerto</b>`)).addTo(map);
+      new mapboxgl.Marker({color:'#38bdf8'}).setLngLat(center).setPopup(new mapboxgl.Popup().setHTML(`<b>🏙️ Centro — ${name}</b>`)).addTo(map);
+      // Line from airport to center
+      map.addSource('transport-route',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:[airport,center]}}});
+      map.addLayer({id:'transport-route',type:'line',source:'transport-route',paint:{'line-color':'#4ade80','line-width':3,'line-dasharray':[2,2]}});
+      map.fitBounds([airport,center],{padding:60});
+    });
+  },100);
 }
 
 // ─── HOTEL MAP ─────────────────────────────────
