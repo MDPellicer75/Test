@@ -717,8 +717,47 @@ REGLAS:
             )
 
             content = response.choices[0].message.content
-            return json.loads(content)
+            try:
+                return json.loads(content)
+            except json.JSONDecodeError:
+                # Try to repair truncated JSON
+                repaired = self._repair_json(content)
+                if repaired:
+                    return repaired
+                print(f"[TravelOS AI ERROR] Could not parse or repair JSON")
+                return self._fallback_destination_data()
 
         except Exception as e:
             print(f"[TravelOS AI ERROR] {type(e).__name__}: {e}")
             return self._fallback_destination_data()
+
+    def _repair_json(self, content: str) -> dict:
+        """Try to repair broken/truncated JSON from AI."""
+        import json
+        # Close any unclosed brackets/braces
+        open_braces = content.count('{') - content.count('}')
+        open_brackets = content.count('[') - content.count(']')
+        # Remove trailing comma if any
+        content = content.rstrip()
+        if content.endswith(','):
+            content = content[:-1]
+        # Close open strings (find last unclosed quote)
+        if content.count('"') % 2 != 0:
+            content += '"'
+        # Close arrays and objects
+        content += ']' * open_brackets
+        content += '}' * open_braces
+        try:
+            return json.loads(content)
+        except:
+            # Last resort: try to find the largest valid JSON substring
+            for i in range(len(content), 0, -100):
+                substr = content[:i]
+                open_b = substr.count('{') - substr.count('}')
+                open_a = substr.count('[') - substr.count(']')
+                attempt = substr + ']' * open_a + '}' * open_b
+                try:
+                    return json.loads(attempt)
+                except:
+                    continue
+            return None
