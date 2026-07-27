@@ -68,6 +68,50 @@ async def explore_destination(
     return result
 
 
+@router.post("/more-hotels", response_model=None)
+async def get_more_hotels(
+    data: ExploreRequest,
+    user_id: UUID = Depends(get_current_user_id),
+):
+    """Get more hotels for a destination."""
+    agent = DestinationAgent()
+    existing = data.dict().get("existing", []) if hasattr(data, "existing") else []
+    result = await agent.get_more_hotels(
+        destination=data.destination,
+        from_city=data.from_city or "Buenos Aires",
+        existing_hotels=existing,
+    )
+    return result
+
+
+@router.post("/more-activities", response_model=None)
+async def get_more_activities(
+    data: ExploreRequest,
+    user_id: UUID = Depends(get_current_user_id),
+):
+    """Get more activities for a destination."""
+    agent = DestinationAgent()
+    result = await agent.get_more_activities(
+        destination=data.destination,
+        existing_activities=[],
+    )
+    return result
+
+
+@router.post("/more-flights", response_model=None)
+async def get_more_flights(
+    data: ExploreRequest,
+    user_id: UUID = Depends(get_current_user_id),
+):
+    """Get more flight options."""
+    agent = DestinationAgent()
+    result = await agent.get_more_flights(
+        destination=data.destination,
+        from_city=data.from_city or "Buenos Aires",
+    )
+    return result
+
+
 @router.get("/search")
 async def search_destinations(
     q: str = Query(description="Search query: 'japon', 'playa barata', 'europa'"),

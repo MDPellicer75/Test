@@ -312,7 +312,97 @@ REGLAS:
 - Respondé SOLO el JSON, sin texto adicional"""
 
 
-    async def _call_ai_json(self, prompt: str) -> dict:
+    async def get_more_hotels(self, destination: str, from_city: str, existing_hotels: list) -> dict:
+        """Get more hotels for a destination."""
+        existing_names = [h.get('name','') for h in existing_hotels]
+        prompt = f"""Necesito MÁS hoteles en {destination} para un viajero que sale desde {from_city}.
+Ya tengo estos: {', '.join(existing_names)}
+
+Generá un JSON con 10 hoteles NUEVOS (que NO estén en la lista anterior):
+{{
+  "hotels": [
+    {{
+      "name": "nombre real del hotel/hostel",
+      "zone": "barrio",
+      "type": "hotel/hostel/apartment/boutique/luxury",
+      "price_per_night_usd": XX,
+      "rating": X.X,
+      "highlights": ["wifi", "breakfast", "pool"],
+      "best_for": "parejas/solo/familias/mochileros",
+      "latitude": XX.XXXX,
+      "longitude": XX.XXXX
+    }}
+  ]
+}}
+
+REGLAS:
+- Hoteles REALES con coordenadas reales
+- Incluí desde hostels USD 15/noche hasta 5 estrellas USD 600+/noche
+- Variedad de zonas y tipos
+- Respondé SOLO JSON"""
+        return await self._call_ai_json(prompt)
+
+    async def get_more_activities(self, destination: str, existing_activities: list) -> dict:
+        """Get more activities for a destination."""
+        existing_names = [a.get('name','') for a in existing_activities]
+        prompt = f"""Necesito MÁS actividades en {destination}.
+Ya tengo estas: {', '.join(existing_names)}
+
+Generá un JSON con 10 actividades NUEVAS:
+{{
+  "activities": [
+    {{
+      "name": "actividad",
+      "category": "museum/nature/adventure/culture/nightlife/shopping/food",
+      "description": "descripción corta",
+      "duration_hours": X,
+      "cost_usd": XX,
+      "is_free": false,
+      "best_time_to_visit": "horario",
+      "rating": X.X,
+      "latitude": XX.XXXX,
+      "longitude": XX.XXXX
+    }}
+  ]
+}}
+
+REGLAS:
+- Actividades REALES con coordenadas reales
+- Variedad: gratis, pagas, aventura, cultura, comida, nocturnas
+- NO repetir las que ya tengo
+- Respondé SOLO JSON"""
+        return await self._call_ai_json(prompt)
+
+    async def get_more_flights(self, destination: str, from_city: str, flight_class: str = "economy") -> dict:
+        """Get more flight options."""
+        prompt = f"""Necesito MÁS opciones de vuelo desde {from_city} a {destination}, clase {flight_class}.
+
+Generá un JSON con 8 opciones de vuelo:
+{{
+  "options": [
+    {{
+      "airline": "nombre",
+      "origin_airport": "código",
+      "destination_airport": "código",
+      "duration_hours": X.X,
+      "stops": 0,
+      "stop_cities": [],
+      "price_usd": XXXX,
+      "baggage_included": true,
+      "baggage_kg": 23,
+      "is_cheapest": false,
+      "is_fastest": false
+    }}
+  ]
+}}
+
+REGLAS:
+- Vuelos reales con aerolíneas reales
+- Incluí directos y con escalas
+- Clase: {flight_class}
+- Variedad de precios
+- Respondé SOLO JSON"""
+        return await self._call_ai_json(prompt)
         """Call OpenAI and get JSON response."""
         import json
 
@@ -629,3 +719,39 @@ REGLAS:
                 "ideal_days": 7,
             },
         }
+
+
+    async def _call_ai_json(self, prompt: str) -> dict:
+        """Call OpenAI and get JSON response."""
+        import json
+
+        if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY == "sk-placeholder":
+            return self._fallback_destination_data()
+
+        try:
+            client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+
+            response = await client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Sos un experto en viajes. Respondé SOLO JSON válido. "
+                            "Sin markdown, sin ```json, sin texto extra. Solo el JSON. "
+                            "Sé conciso en descripciones."
+                        ),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.7,
+                max_tokens=4000,
+                timeout=90,
+                response_format={"type": "json_object"},
+            )
+
+            content = response.choices[0].message.content
+            return json.loads(content)
+
+        except Exception as e:
+            return self._fallback_destination_data()

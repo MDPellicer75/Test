@@ -304,9 +304,18 @@ function tabFlights(){
       </div>
     `).join('')}
     ${(f.tips||[]).map(t=>`<div style="background:#334155;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;color:#94a3b8;">💡 ${t}</div>`).join('')}
+    <button onclick="loadMoreFlights()" id="btn-more-flights" style="width:100%;margin-top:16px;padding:14px;border:1px solid #38bdf8;border-radius:10px;background:transparent;color:#38bdf8;font-weight:600;cursor:pointer;font-size:14px;">✈️ Ver más vuelos</button>
   `;
 }
 function selectFlight(p){selections.flight=(selections.flight===p)?null:p;screenResults('flights');}
+async function loadMoreFlights(){
+  document.getElementById('btn-more-flights').textContent='Cargando...';
+  try{
+    const r=await fetch(`${API}/api/v1/destinations/more-flights`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({destination:destData._name,from_city:fromCity,travelers:1})});
+    const d=await r.json();
+    if(d.options){destData.flights.options=[...destData.flights.options,...d.options];screenResults('flights');}
+  }catch(e){document.getElementById('btn-more-flights').textContent='Error, intentá de nuevo';}
+}
 
 
 // ─── TAB: TRANSPORT ────────────────────────────
@@ -428,6 +437,7 @@ function tabHotels(){
       </div>
     `).join('')}
     ${(a.tips||[]).map(t=>`<div style="background:#334155;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:13px;color:#94a3b8;">💡 ${t}</div>`).join('')}
+    <button onclick="loadMoreHotels()" id="btn-more-hotels" style="width:100%;margin-top:16px;padding:14px;border:1px solid #fbbf24;border-radius:10px;background:transparent;color:#fbbf24;font-weight:600;cursor:pointer;font-size:14px;">🏨 Ver más hoteles</button>
   `;
 }
 
@@ -475,9 +485,12 @@ function tabActivities(){
       </div>
     `).join('')}
     ${(a.free_activities||[]).length?`<h4 style="font-size:15px;margin:16px 0 12px;">🆓 Gratis</h4>${(a.free_activities||[]).map(act=>`<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:10px;"><div style="font-weight:600;">${act.name} <span style="background:#065f46;color:#4ade80;padding:2px 6px;border-radius:4px;font-size:10px;">GRATIS</span></div><div style="color:#94a3b8;font-size:12px;margin-top:4px;">${act.description||''} · ⏱️ ${act.duration_hours}h</div></div>`).join('')}`:''}
+    <button onclick="loadMoreActivities()" id="btn-more-acts" style="width:100%;margin-top:16px;padding:14px;border:1px solid #f87171;border-radius:10px;background:transparent;color:#f87171;font-weight:600;cursor:pointer;font-size:14px;">🎯 Ver más actividades</button>
   `;
 }
 function toggleAct(i){const idx=selections.activities.indexOf(i);if(idx>-1)selections.activities.splice(idx,1);else selections.activities.push(i);screenResults('activities');}
+
+// Add "ver más" button is handled inline in tabActivities via btn-more-acts
 
 
 // ─── TAB: MAP ──────────────────────────────────
@@ -637,6 +650,35 @@ function tabItinerary(){
 function changeOrigin(){
   const newCity=prompt('¿Desde qué ciudad viajás?',fromCity);
   if(newCity&&newCity.trim()){fromCity=newCity.trim();screenDestination();}
+}
+
+// ─── LOAD MORE FUNCTIONS ───────────────────────
+async function loadMoreHotels(){
+  document.getElementById('btn-more-hotels').textContent='Cargando más hoteles...';
+  try{
+    const r=await fetch(`${API}/api/v1/destinations/more-hotels`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({destination:destData._name,from_city:fromCity,travelers:1})});
+    const d=await r.json();
+    if(d.hotels){
+      if(!destData.accommodation) destData.accommodation={};
+      if(!destData.accommodation.hotels) destData.accommodation.hotels=[];
+      destData.accommodation.hotels=[...destData.accommodation.hotels,...d.hotels];
+      screenResults('hotels');
+    }
+  }catch(e){document.getElementById('btn-more-hotels').textContent='Error, intentá de nuevo';}
+}
+
+async function loadMoreActivities(){
+  document.getElementById('btn-more-acts').textContent='Cargando más actividades...';
+  try{
+    const r=await fetch(`${API}/api/v1/destinations/more-activities`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({destination:destData._name,from_city:fromCity,travelers:1})});
+    const d=await r.json();
+    if(d.activities){
+      if(!destData.activities) destData.activities={};
+      if(!destData.activities.must_do) destData.activities.must_do=[];
+      destData.activities.must_do=[...destData.activities.must_do,...d.activities];
+      screenResults('activities');
+    }
+  }catch(e){document.getElementById('btn-more-acts').textContent='Error, intentá de nuevo';}
 }
 
 // ─── TRANSPORT MAP ──────────────────────────────
