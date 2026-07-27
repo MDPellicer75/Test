@@ -75,11 +75,37 @@ async def get_more_hotels(
 ):
     """Get more hotels for a destination."""
     agent = DestinationAgent()
-    existing = data.dict().get("existing", []) if hasattr(data, "existing") else []
     result = await agent.get_more_hotels(
         destination=data.destination,
         from_city=data.from_city or "Buenos Aires",
-        existing_hotels=existing,
+        existing_hotels=[],
+    )
+    return result
+
+
+@router.post("/hotels-by-zone", response_model=None)
+async def get_hotels_by_zone(
+    destination: str = Query(description="Destination"),
+    zone: str = Query(description="Zone name"),
+    user_id: UUID = Depends(get_current_user_id),
+):
+    """Get 10 hotels for a specific zone."""
+    agent = DestinationAgent()
+    result = await agent.get_hotels_by_zone(destination=destination, zone=zone)
+    return result
+
+
+@router.post("/transport-route", response_model=None)
+async def get_transport_route(
+    destination: str = Query(description="Destination"),
+    from_point: str = Query(description="From"),
+    to_point: str = Query(description="To"),
+    user_id: UUID = Depends(get_current_user_id),
+):
+    """Get transport options between two points including car rental."""
+    agent = DestinationAgent()
+    result = await agent.get_transport_routes(
+        destination=destination, from_point=from_point, to_point=to_point
     )
     return result
 

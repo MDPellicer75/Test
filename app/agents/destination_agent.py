@@ -312,7 +312,77 @@ REGLAS:
 - Respondé SOLO el JSON, sin texto adicional"""
 
 
-    async def get_more_hotels(self, destination: str, from_city: str, existing_hotels: list) -> dict:
+    async def get_hotels_by_zone(self, destination: str, zone: str) -> dict:
+        """Get 10 hotels for a specific zone."""
+        prompt = f"""Necesito 10 hoteles REALES en la zona "{zone}" de {destination}.
+
+Generá un JSON:
+{{
+  "zone": "{zone}",
+  "hotels": [
+    {{
+      "name": "nombre real",
+      "type": "hotel/hostel/boutique/luxury/apartment",
+      "price_per_night_usd": XX,
+      "rating": X.X,
+      "highlights": ["wifi", "pool", "gym"],
+      "best_for": "parejas/familias/negocios/mochileros",
+      "stars": X,
+      "latitude": XX.XXXX,
+      "longitude": XX.XXXX
+    }}
+  ]
+}}
+
+REGLAS:
+- 10 hoteles REALES que existan
+- Coordenadas REALES de cada hotel
+- Variedad: desde hostels hasta 5 estrellas
+- Precios realistas del mercado actual
+- Respondé SOLO JSON"""
+        return await self._call_ai_json(prompt)
+
+    async def get_transport_routes(self, destination: str, from_point: str, to_point: str) -> dict:
+        """Get transport options between two points."""
+        prompt = f"""Necesito opciones de transporte en {destination} desde "{from_point}" hasta "{to_point}".
+
+Generá un JSON:
+{{
+  "from": "{from_point}",
+  "to": "{to_point}",
+  "options": [
+    {{
+      "method": "Metro/Taxi/Bus/Uber/Tren/Caminando",
+      "duration_minutes": XX,
+      "cost_usd": XX,
+      "details": "línea X, dirección Y",
+      "is_fastest": true/false,
+      "is_cheapest": true/false,
+      "comfort_level": "alto/medio/bajo"
+    }}
+  ],
+  "car_rental": {{
+    "available": true,
+    "agencies": [
+      {{
+        "name": "Hertz/Avis/Enterprise",
+        "price_per_day_usd": XX,
+        "location": "dirección",
+        "latitude": XX.XXXX,
+        "longitude": XX.XXXX
+      }}
+    ],
+    "recommended": true/false,
+    "why": "razón"
+  }}
+}}
+
+REGLAS:
+- Datos reales
+- Mínimo 4 opciones de transporte
+- Mínimo 3 agencias de alquiler de auto
+- Respondé SOLO JSON"""
+        return await self._call_ai_json(prompt)
         """Get more hotels for a destination."""
         existing_names = [h.get('name','') for h in existing_hotels]
         prompt = f"""Necesito MÁS hoteles en {destination} para un viajero que sale desde {from_city}.
@@ -761,3 +831,31 @@ REGLAS:
                 except:
                     continue
             return None
+
+
+    async def get_more_hotels(self, destination: str, from_city: str, existing_hotels: list) -> dict:
+        """Get more hotels for a destination."""
+        existing_names = [h.get('name','') for h in existing_hotels]
+        prompt = f"""Necesito MÁS hoteles en {destination}.
+Ya tengo estos: {', '.join(existing_names[:5])}
+
+Generá un JSON con 10 hoteles NUEVOS:
+{{
+  "hotels": [
+    {{
+      "name": "nombre real",
+      "zone": "barrio",
+      "type": "hotel/hostel/boutique/luxury",
+      "price_per_night_usd": XX,
+      "rating": X.X,
+      "highlights": ["wifi", "breakfast"],
+      "best_for": "parejas/solo/familias",
+      "latitude": XX.XXXX,
+      "longitude": XX.XXXX
+    }}
+  ]
+}}
+- Hoteles REALES, coordenadas reales
+- NO repetir los que ya tengo
+- Respondé SOLO JSON"""
+        return await self._call_ai_json(prompt)
