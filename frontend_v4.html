@@ -64,6 +64,11 @@ function screenHome(){
   </div>
   <div style="max-width:600px;margin:0 auto;padding:20px;">
     <div style="position:relative;"><input id="dest-input" type="text" placeholder="A donde queres ir?" style="width:100%;padding:16px 16px 16px 45px;border:1px solid #334155;border-radius:12px;background:#0f172a;color:white;font-size:18px;outline:none;" onkeypress="if(event.key==='Enter')doExplore()"><span style="position:absolute;left:15px;top:16px;font-size:20px;">🌍</span></div>
+    <div style="display:flex;gap:10px;margin-top:12px;">
+      <div style="flex:1;"><label style="color:#94a3b8;font-size:11px;">Adultos</label><select id="sel-adults" style="width:100%;padding:10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:white;font-size:14px;margin-top:4px;"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option></select></div>
+      <div style="flex:1;"><label style="color:#94a3b8;font-size:11px;">Niños</label><select id="sel-kids" style="width:100%;padding:10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:white;font-size:14px;margin-top:4px;"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+      <div style="flex:1;"><label style="color:#94a3b8;font-size:11px;">Clase</label><select id="sel-class" style="width:100%;padding:10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:white;font-size:14px;margin-top:4px;"><option value="economy">Económica</option><option value="business">Business</option><option value="first">Primera</option></select></div>
+    </div>
     <p style="color:#64748b;margin-top:24px;font-size:14px;font-weight:600;">Destinos populares</p>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;">
       <div onclick="doExplore('Tokyo, Japan')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;cursor:pointer;text-align:center;"><div style="font-size:32px;">🗼</div><div style="font-weight:600;margin-top:6px;">Tokyo</div></div>
@@ -92,9 +97,9 @@ async function doExplore(dest){
 // Simple tab system
 function showResults(tab){
   const name=(destData._name||'').split(',')[0];
-  const tabs=['overview','flights','hotels','activities','map','costs','climate','safety'];
-  const icons=['📊','✈️','🏨','🎯','🗺️','💵','🌤️','🛡️'];
-  const labels=['Resumen','Vuelos','Hoteles','Actividades','Mapa','Costos','Clima','Seguridad'];
+  const tabs=['overview','flights','transport','hotels','activities','itinerary','map','costs','climate','safety'];
+  const icons=['📊','✈️','🚇','🏨','🎯','📋','🗺️','💵','🌤️','🛡️'];
+  const labels=['Resumen','Vuelos','Transporte','Hoteles','Actividades','Itinerario','Mapa','Costos','Clima','Seguridad'];
   
   let header='<div style="background:#1e293b;padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #334155;"><span onclick="screenHome()" style="cursor:pointer;font-size:20px;">←</span><h2 style="font-size:18px;flex:1;">'+name+'</h2><span style="color:#94a3b8;font-size:12px;">desde '+fromCity+'</span></div>';
   let tabsHtml='<div style="display:flex;overflow-x:auto;background:#1e293b;border-bottom:1px solid #334155;scrollbar-width:none;">';
@@ -107,8 +112,10 @@ function showResults(tab){
   let content='';
   if(tab==='overview') content=tabOverview();
   else if(tab==='flights') content=tabFlights();
+  else if(tab==='transport') content=tabTransport();
   else if(tab==='hotels') content=tabHotels();
   else if(tab==='activities') content=tabActivities();
+  else if(tab==='itinerary') content=tabItinerary();
   else if(tab==='map') content=tabMap();
   else if(tab==='costs') content=tabCosts();
   else if(tab==='climate') content=tabClimate();
@@ -117,6 +124,8 @@ function showResults(tab){
   render(header+tabsHtml+'<div style="max-width:600px;margin:0 auto;padding:16px;padding-bottom:20px;">'+content+'</div>');
   if(tab==='map') setTimeout(initMap,200);
   if(tab==='hotels') setTimeout(initHotelMap,200);
+  if(tab==='itinerary') setTimeout(initItineraryMap,200);
+  if(tab==='transport') setTimeout(initTransportMap,200);
 }
 
 function initHotelMap(){
@@ -277,6 +286,102 @@ function tabClimate(){
 function tabSafety(){
   const s=destData.safety||{};
   return '<h3 style="margin-bottom:16px;">🛡️ Seguridad</h3><div style="background:#1e293b;border-radius:12px;padding:20px;text-align:center;margin-bottom:16px;"><div style="font-size:48px;font-weight:700;color:'+(s.safety_score>=8?'#4ade80':'#fbbf24')+';">'+(s.safety_score||'?')+'/10</div></div><div style="background:#1e293b;border-radius:12px;padding:16px;font-size:13px;line-height:2;">Visa: '+(s.visa_required?'Necesitas':'No necesitas')+'<br>Agua potable: '+(s.tap_water_safe?'Si':'No')+'<br>Emergencias: '+(s.emergency_number||'?')+'</div>';
+}
+
+function tabTransport(){
+  var t=destData.transport||{};
+  var h='<h3 style="margin-bottom:16px;">🚇 Transporte</h3>';
+  h+='<div id="transport-map" style="height:200px;border-radius:12px;margin-bottom:16px;"></div>';
+  h+='<div style="display:flex;gap:8px;margin-bottom:16px;"><div style="flex:1;background:#065f46;border:1px solid #4ade80;border-radius:10px;padding:10px;text-align:center;font-size:11px;"><div style="color:#4ade80;">💰 BARATO</div><div style="color:#4ade80;margin-top:4px;">'+(t.best_option_budget||'Metro/Bus')+'</div></div><div style="flex:1;background:#1e3a5f;border:1px solid #38bdf8;border-radius:10px;padding:10px;text-align:center;font-size:11px;"><div style="color:#38bdf8;">⚡ RÁPIDO</div><div style="color:#38bdf8;margin-top:4px;">'+(t.best_option_speed||'Taxi/Uber')+'</div></div></div>';
+  h+='<h4 style="color:#94a3b8;font-size:14px;margin-bottom:12px;">✈️ → 🏙️ Aeropuerto al centro:</h4>';
+  (t.airport_to_center||[]).forEach(function(r){
+    h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;">'+r.method+'</div><div style="color:#94a3b8;font-size:12px;margin-top:4px;">⏱️ '+r.duration_minutes+' min</div></div><div style="color:#4ade80;font-weight:700;font-size:18px;">USD '+r.cost_usd+'</div></div>';
+  });
+  h+='<h4 style="color:#94a3b8;font-size:14px;margin:16px 0 12px;">🎫 Pases turísticos:</h4>';
+  (t.passes_available||[]).forEach(function(p){
+    h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">'+p.name+'</div><div style="color:#4ade80;font-weight:700;">USD '+p.price_usd+'</div></div><div style="color:#94a3b8;font-size:12px;margin-top:4px;">'+p.duration_days+' días · '+(p.covers||[]).join(', ')+'</div><div style="color:#38bdf8;font-size:12px;margin-top:4px;">💡 '+p.worth_it_if+'</div></div>';
+  });
+  h+='<h4 style="color:#94a3b8;font-size:14px;margin:16px 0 12px;">🔍 Buscar ruta:</h4>';
+  h+='<div style="display:flex;gap:8px;margin-bottom:12px;"><input id="rt-from" placeholder="Desde" style="flex:1;padding:10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:white;font-size:13px;outline:none;"><input id="rt-to" placeholder="Hasta" style="flex:1;padding:10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:white;font-size:13px;outline:none;"><button onclick="searchRoute()" style="padding:10px 14px;border:none;border-radius:8px;background:#38bdf8;color:white;font-weight:600;cursor:pointer;">Ir</button></div>';
+  h+='<div id="route-res"></div>';
+  return h;
+}
+function initTransportMap(){
+  if(typeof mapboxgl==='undefined') return;
+  var el=document.getElementById('transport-map');
+  if(!el) return;
+  var destCoords={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16]};
+  var name=(destData._name||'').split(',')[0].trim();
+  var center=destCoords[name]||[2.35,48.85];
+  var airport=[center[0]+0.12,center[1]+0.04];
+  var map=new mapboxgl.Map({container:'transport-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:11});
+  map.on('load',function(){
+    new mapboxgl.Marker({color:'#f87171'}).setLngLat(airport).setPopup(new mapboxgl.Popup().setHTML('<b>✈️ Aeropuerto</b>')).addTo(map);
+    new mapboxgl.Marker({color:'#38bdf8'}).setLngLat(center).setPopup(new mapboxgl.Popup().setHTML('<b>🏙️ Centro</b>')).addTo(map);
+    map.addSource('tr',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:[airport,center]}}});
+    map.addLayer({id:'tr',type:'line',source:'tr',paint:{'line-color':'#4ade80','line-width':3,'line-dasharray':[2,2]}});
+    map.fitBounds([airport,center],{padding:50});
+  });
+}
+async function searchRoute(){
+  var from=document.getElementById('rt-from').value,to=document.getElementById('rt-to').value;
+  if(!from||!to) return;
+  var c=document.getElementById('route-res');
+  c.innerHTML='<div style="padding:12px;color:#94a3b8;">Buscando...</div>';
+  try{
+    var r=await fetch(API+'/api/v1/destinations/transport-route?destination='+encodeURIComponent(destData._name)+'&from_point='+encodeURIComponent(from)+'&to_point='+encodeURIComponent(to),{method:'POST',headers:{'Authorization':'Bearer '+token}});
+    var d=await r.json();
+    var h='';
+    if(d.options){d.options.forEach(function(o){h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;">'+o.method+'</div><div style="color:#94a3b8;font-size:11px;">'+(o.details||'')+'</div></div><div style="text-align:right;"><div style="font-size:13px;">'+o.duration_minutes+' min</div><div style="color:#4ade80;font-weight:700;">USD '+o.cost_usd+'</div></div></div>';});}
+    if(d.car_rental&&d.car_rental.agencies){h+='<h4 style="color:#fbbf24;font-size:13px;margin:12px 0 8px;">🚗 Alquiler de auto:</h4>';d.car_rental.agencies.forEach(function(ag){h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;"><div style="font-weight:600;">'+ag.name+'</div><div style="color:#4ade80;">USD '+ag.price_per_day_usd+'/día</div></div>';});}
+    c.innerHTML=h||'Sin resultados';
+  }catch(e){c.innerHTML='<div style="color:#f87171;">Error</div>';}
+}
+
+function tabItinerary(){
+  var its=destData.suggested_itineraries||[];
+  var plan=its[0]||{daily_plan:[]};
+  var days=plan.daily_plan||[];
+  var h='<h3 style="margin-bottom:16px;">📋 Itinerario — '+(plan.title||'')+'</h3>';
+  h+='<div style="display:flex;gap:16px;flex-wrap:wrap;">';
+  h+='<div style="flex:1;min-width:250px;">';
+  days.forEach(function(d){
+    h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:12px;"><div style="font-weight:600;color:#38bdf8;margin-bottom:8px;">Día '+d.day_number+': '+d.title+'</div>';
+    (d.activities||[]).forEach(function(a,i){
+      h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><div style="width:22px;height:22px;border-radius:50%;background:#f87171;color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+(i+1)+'</div><div style="font-size:13px;">'+a+'</div></div>';
+    });
+    h+='<div style="color:#64748b;font-size:11px;margin-top:6px;">💰 USD '+d.estimated_cost_usd+' · 🚶 '+d.walking_km+'km</div></div>';
+  });
+  h+='</div>';
+  h+='<div style="flex:1;min-width:250px;"><div id="itin-map" style="height:350px;border-radius:12px;position:sticky;top:80px;"></div></div>';
+  h+='</div>';
+  return h;
+}
+function initItineraryMap(){
+  if(typeof mapboxgl==='undefined') return;
+  var el=document.getElementById('itin-map');
+  if(!el) return;
+  var destCoords={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16]};
+  var name=(destData._name||'').split(',')[0].trim();
+  var center=destCoords[name]||[2.35,48.85];
+  var its=destData.suggested_itineraries||[];
+  var plan=its[0]||{daily_plan:[]};
+  var allActs=[];
+  (plan.daily_plan||[]).forEach(function(d){(d.activities||[]).forEach(function(a){allActs.push(a);});});
+  var map=new mapboxgl.Map({container:'itin-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:12});
+  map.on('load',function(){
+    var points=allActs.map(function(a,i){var angle=(i/allActs.length)*Math.PI*2;var r=0.012+Math.random()*0.008;return [center[0]+Math.cos(angle)*r,center[1]+Math.sin(angle)*r];});
+    points.forEach(function(p,i){
+      var el2=document.createElement('div');
+      el2.style.cssText='width:24px;height:24px;border-radius:50%;background:#f87171;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid white;';
+      el2.textContent=i+1;
+      new mapboxgl.Marker({element:el2}).setLngLat(p).setPopup(new mapboxgl.Popup().setHTML('<b>'+(i+1)+'. '+allActs[i]+'</b>')).addTo(map);
+    });
+    if(points.length>1){
+      map.addSource('itin',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:points}}});
+      map.addLayer({id:'itin',type:'line',source:'itin',paint:{'line-color':'#f87171','line-width':2.5}});
+    }
+  });
 }
 
 try{screenLogin();}catch(e){document.getElementById('app').innerHTML='<div style="padding:40px;color:red;"><h2>Error:</h2><pre>'+e.message+'</pre></div>';}
