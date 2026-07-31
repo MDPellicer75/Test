@@ -136,14 +136,19 @@ function initHotelMap(){
   var destCoords={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16]};
   var name=(destData._name||'').split(',')[0].trim();
   var center=destCoords[name]||[2.35,48.85];
-  hotelMapInstance=new mapboxgl.Map({container:'hotel-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:12});
+  hotelMapInstance=new mapboxgl.Map({container:'hotel-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:13});
   hotelMapInstance.on('load',function(){
     var hotels=(destData.accommodation||{}).hotels||[];
+    var bounds=new mapboxgl.LngLatBounds();
+    var hasPoints=false;
     hotels.forEach(function(h){
       if(h.latitude&&h.longitude){
-        new mapboxgl.Marker({color:'#fbbf24',scale:0.6}).setLngLat([h.longitude,h.latitude]).setPopup(new mapboxgl.Popup().setHTML('<b>'+h.name+'</b><br>USD '+h.price_per_night_usd+'/n<br>⭐ '+(h.rating||'?')+'/5<br>'+(h.type||''))).addTo(hotelMapInstance);
+        hasPoints=true;
+        bounds.extend([h.longitude,h.latitude]);
+        new mapboxgl.Marker({color:'#fbbf24',scale:0.8}).setLngLat([h.longitude,h.latitude]).setPopup(new mapboxgl.Popup().setHTML('<b>'+h.name+'</b><br><span style="color:green;font-weight:bold;">USD '+h.price_per_night_usd+'/n</span><br>⭐ '+(h.rating||'?')+'/5<br>'+(h.type||'')+'<br>📍 '+(h.zone||''))).addTo(hotelMapInstance);
       }
     });
+    if(hasPoints){hotelMapInstance.fitBounds(bounds,{padding:40,maxZoom:15});}
   });
 }
 
@@ -181,7 +186,7 @@ function tabHotels(){
     h+='<div onclick="loadZoneHotels(\''+z.name.replace(/'/g,"\\'")+'\','+JSON.stringify([z.avg_price_per_night_usd||0]).replace(/"/g,'&quot;')+')" style="background:#1e293b;border:1px solid '+(selectedZone===z.name?'#fbbf24':'#334155')+';border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;" onmouseover="this.style.borderColor=\'#fbbf24\'" onmouseout="this.style.borderColor=\''+(selectedZone===z.name?'#fbbf24':'#334155')+'\'"><div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;">'+z.name+'</div><div style="color:#94a3b8;font-size:12px;margin-top:2px;">'+z.description+'</div></div><div style="text-align:right;"><div style="color:#4ade80;font-weight:700;">USD '+z.avg_price_per_night_usd+'/n</div><div style="color:#fbbf24;font-size:11px;">Ver hoteles →</div></div></div></div>';
   });
   var filtered=hotels;
-  if(hotelTypeFilter!=='Todos'){filtered=hotels.filter(function(ho){return (ho.type||'').toLowerCase().indexOf(hotelTypeFilter.toLowerCase())>-1;});}
+  if(hotelTypeFilter!=='Todos'){filtered=hotels.filter(function(ho){var t=(ho.type||'').toLowerCase();return t.indexOf(hotelTypeFilter.toLowerCase())>-1||hotelTypeFilter.toLowerCase().indexOf(t)>-1;});}
   if(filtered.length>0){
     h+='<h4 style="font-size:15px;margin:16px 0 12px;">🏨 Hoteles cargados ('+filtered.length+' de '+hotels.length+'):</h4>';
     filtered.forEach(function(ho){
@@ -379,6 +384,7 @@ function tabTransport(){
   h+='<div id="route-res"></div>';
   return h;
 }
+var transportMapInstance=null;
 function initTransportMap(){
   if(typeof mapboxgl==='undefined') return;
   var el=document.getElementById('transport-map');
@@ -387,14 +393,25 @@ function initTransportMap(){
   var name=(destData._name||'').split(',')[0].trim();
   var center=destCoords[name]||[2.35,48.85];
   var airport=[center[0]+0.12,center[1]+0.04];
-  var map=new mapboxgl.Map({container:'transport-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:11});
-  map.on('load',function(){
-    new mapboxgl.Marker({color:'#f87171'}).setLngLat(airport).setPopup(new mapboxgl.Popup().setHTML('<b>✈️ Aeropuerto</b>')).addTo(map);
-    new mapboxgl.Marker({color:'#38bdf8'}).setLngLat(center).setPopup(new mapboxgl.Popup().setHTML('<b>🏙️ Centro</b>')).addTo(map);
-    map.addSource('tr',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:[airport,center]}}});
-    map.addLayer({id:'tr',type:'line',source:'tr',paint:{'line-color':'#4ade80','line-width':3,'line-dasharray':[2,2]}});
-    map.fitBounds([airport,center],{padding:50});
+  transportMapInstance=new mapboxgl.Map({container:'transport-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:11});
+  transportMapInstance.on('load',function(){
+    new mapboxgl.Marker({color:'#f87171'}).setLngLat(airport).setPopup(new mapboxgl.Popup().setHTML('<b>✈️ Aeropuerto</b>')).addTo(transportMapInstance);
+    new mapboxgl.Marker({color:'#38bdf8'}).setLngLat(center).setPopup(new mapboxgl.Popup().setHTML('<b>🏙️ Centro</b>')).addTo(transportMapInstance);
+    transportMapInstance.addSource('tr',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:[airport,center]}}});
+    transportMapInstance.addLayer({id:'tr',type:'line',source:'tr',paint:{'line-color':'#4ade80','line-width':3,'line-dasharray':[2,2]}});
+    transportMapInstance.fitBounds([airport,center],{padding:50});
   });
+}
+function highlightRoute(method){
+  if(!transportMapInstance) return;
+  var colors={'Metro':'#38bdf8','Taxi':'#fbbf24','Uber':'#818cf8','Bus':'#4ade80','Tren':'#f87171','Train':'#f87171','Subway':'#38bdf8'};
+  var color=colors[method]||'#38bdf8';
+  // Flash the route line with the transport color
+  if(transportMapInstance.getLayer('tr')){transportMapInstance.setPaintProperty('tr','line-color',color);transportMapInstance.setPaintProperty('tr','line-width',5);}
+  // Reset after 2 seconds
+  setTimeout(function(){if(transportMapInstance.getLayer('tr')){transportMapInstance.setPaintProperty('tr','line-color','#4ade80');transportMapInstance.setPaintProperty('tr','line-width',3);}},2000);
+  // Zoom to fit
+  transportMapInstance.flyTo({zoom:12,duration:800});
 }
 async function searchRoute(){
   var from=document.getElementById('rt-from').value,to=document.getElementById('rt-to').value;
@@ -405,17 +422,25 @@ async function searchRoute(){
     var r=await fetch(API+'/api/v1/destinations/transport-route?destination='+encodeURIComponent(destData._name)+'&from_point='+encodeURIComponent(from)+'&to_point='+encodeURIComponent(to),{method:'POST',headers:{'Authorization':'Bearer '+token}});
     var d=await r.json();
     var h='';
-    if(d.options){d.options.forEach(function(o){h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;">'+o.method+'</div><div style="color:#94a3b8;font-size:11px;">'+(o.details||'')+'</div></div><div style="text-align:right;"><div style="font-size:13px;">'+o.duration_minutes+' min</div><div style="color:#4ade80;font-weight:700;">USD '+o.cost_usd+'</div></div></div>';});}
-    if(d.car_rental&&d.car_rental.agencies){h+='<h4 style="color:#fbbf24;font-size:13px;margin:12px 0 8px;">🚗 Alquiler de auto:</h4>';d.car_rental.agencies.forEach(function(ag){h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;"><div style="font-weight:600;">'+ag.name+'</div><div style="color:#4ade80;">USD '+ag.price_per_day_usd+'/día</div></div>';});}
+    if(d.options){d.options.forEach(function(o){h+='<div onclick="highlightRoute(\''+o.method+'\')" style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onmouseover="this.style.borderColor=\'#38bdf8\'" onmouseout="this.style.borderColor=\'#334155\'"><div><div style="font-weight:600;">'+o.method+'</div><div style="color:#94a3b8;font-size:11px;">'+(o.details||'')+'</div></div><div style="text-align:right;"><div style="font-size:13px;">⏱️ '+o.duration_minutes+' min</div><div style="color:#4ade80;font-weight:700;">USD '+o.cost_usd+'</div>'+(o.is_cheapest?'<div style="font-size:10px;color:#4ade80;">💰 Más barato</div>':'')+(o.is_fastest?'<div style="font-size:10px;color:#38bdf8;">⚡ Más rápido</div>':'')+'</div></div>';});}
+    if(d.car_rental&&d.car_rental.agencies){h+='<h4 style="color:#fbbf24;font-size:13px;margin:12px 0 8px;">🚗 Alquiler de auto:</h4>';d.car_rental.agencies.forEach(function(ag){h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;"><div><div style="font-weight:600;">'+ag.name+'</div><div style="color:#94a3b8;font-size:11px;">📍 '+(ag.location||'')+'</div></div><div style="color:#4ade80;font-weight:700;">USD '+ag.price_per_day_usd+'/día</div></div>';});}
     c.innerHTML=h||'Sin resultados';
   }catch(e){c.innerHTML='<div style="color:#f87171;">Error</div>';}
 }
 
 function tabItinerary(){
   var its=destData.suggested_itineraries||[];
-  var plan=its[0]||{daily_plan:[]};
+  var plan=its[itinIndex||0]||{daily_plan:[]};
   var days=plan.daily_plan||[];
-  var h='<h3 style="margin-bottom:16px;">📋 Itinerario — '+(plan.title||'')+'</h3>';
+  var h='<h3 style="margin-bottom:12px;">📋 Itinerario</h3>';
+  // Budget selector
+  h+='<div style="display:flex;gap:8px;margin-bottom:16px;">';
+  (its.length>0?its:[plan]).forEach(function(it,idx){
+    var active=(itinIndex||0)===idx;
+    h+='<button onclick="itinIndex='+idx+';showResults(\'itinerary\')" style="flex:1;padding:8px;border:1px solid '+(active?'#4ade80':'#334155')+';border-radius:8px;background:'+(active?'#065f46':'#1e293b')+';color:'+(active?'#4ade80':'#94a3b8')+';cursor:pointer;font-size:11px;font-weight:600;">'+(it.style||'Plan '+(idx+1))+'<br>USD '+(it.total_cost_usd||'?')+'</button>';
+  });
+  h+='</div>';
+  h+='<div style="background:#1e293b;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#94a3b8;"><strong style="color:white;">'+(plan.title||'')+'</strong> · '+(plan.days||'?')+' días · USD '+(plan.total_cost_usd||'?')+' total</div>';
   h+='<div style="display:flex;gap:16px;flex-wrap:wrap;">';
   h+='<div style="flex:1;min-width:250px;">';
   days.forEach(function(d){
@@ -430,6 +455,7 @@ function tabItinerary(){
   h+='</div>';
   return h;
 }
+var itinIndex=0;
 function initItineraryMap(){
   if(typeof mapboxgl==='undefined') return;
   var el=document.getElementById('itin-map');
