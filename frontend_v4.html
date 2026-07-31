@@ -194,8 +194,8 @@ function tabHotels(){
   if(filtered.length===0){filtered=hotels;}}
   if(filtered.length>0){
     h+='<h4 style="font-size:15px;margin:16px 0 12px;">🏨 Hoteles cargados ('+filtered.length+' de '+hotels.length+'):</h4>';
-    filtered.forEach(function(ho){
-      h+='<div onclick="focusHotelOnMap('+ho.latitude+','+ho.longitude+')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;" onmouseover="this.style.borderColor=\'#fbbf24\'" onmouseout="this.style.borderColor=\'#334155\'"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">'+ho.name+'</div><div style="color:#4ade80;font-weight:700;">USD '+ho.price_per_night_usd+'/n</div></div><div style="color:#94a3b8;font-size:12px;margin-top:4px;">⭐ '+(ho.rating||'?')+'/5 · '+(ho.type||'hotel')+' · 📍 '+(ho.zone||'')+'</div></div>';
+    filtered.forEach(function(ho,idx){
+      h+='<div onclick="focusHotelOnMap('+ho.latitude+','+ho.longitude+',\''+ho.name.replace(/'/g,"\\'")+'\')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;" onmouseover="this.style.borderColor=\'#fbbf24\'" onmouseout="this.style.borderColor=\'#334155\'"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">'+ho.name+'</div><div style="color:#4ade80;font-weight:700;">USD '+ho.price_per_night_usd+'/n</div></div><div style="color:#94a3b8;font-size:12px;margin-top:4px;">⭐ '+(ho.rating||'?')+'/5 · '+(ho.type||'hotel')+' · 📍 '+(ho.zone||'')+'</div><div style="color:#38bdf8;font-size:10px;margin-top:4px;">Click → ver en mapa</div></div>';
     });
     h+='<button onclick="loadMoreZoneHotels()" id="btn-more-h" style="width:100%;margin-top:8px;padding:12px;border:1px solid #fbbf24;border-radius:10px;background:transparent;color:#fbbf24;font-weight:600;cursor:pointer;font-size:13px;">Cargar 10 más</button>';
   }
@@ -233,8 +233,17 @@ async function loadMoreZoneHotels(){
     }
   }catch(e){if(btn) btn.textContent='Error, intentá de nuevo';}
 }
-function focusHotelOnMap(lat,lng){
-  if(hotelMapInstance&&lat&&lng){hotelMapInstance.flyTo({center:[lng,lat],zoom:15,duration:1000});}
+function focusHotelOnMap(lat,lng,name){
+  if(hotelMapInstance&&lat&&lng){
+    hotelMapInstance.flyTo({center:[lng,lat],zoom:16,duration:1500});
+    // Add a highlighted marker at that location
+    setTimeout(function(){
+      var el=document.createElement('div');
+      el.style.cssText='width:30px;height:30px;border-radius:50%;background:#f87171;border:3px solid white;box-shadow:0 0 10px rgba(248,113,113,0.6);animation:pulse 1s infinite;';
+      el.innerHTML='<style>@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}</style>';
+      new mapboxgl.Marker({element:el}).setLngLat([lng,lat]).setPopup(new mapboxgl.Popup({offset:15}).setHTML('<b style="color:#fbbf24;">'+name+'</b>')).addTo(hotelMapInstance).togglePopup();
+    },1600);
+  }
 }
 
 function tabActivities(){
