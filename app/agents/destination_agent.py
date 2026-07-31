@@ -303,7 +303,8 @@ REGLAS:
 - Mínimo 8 platos típicos
 - Mínimo 8 actividades con coordenadas (latitude, longitude)
 - Los 12 meses de clima (solo mes, temp, rain_days, is_best_time, what_to_wear)
-- 1 itinerario sugerido (budget)
+- 3 itinerarios sugeridos obligatorios: uno "budget", uno "comfort", uno "luxury"
+- Cada itinerario con daily_plan completo
 - Comparaciones para 3, 5 y 7 días
 - En transporte: ruta aeropuerto-centro con 3 opciones
 - Todo en español

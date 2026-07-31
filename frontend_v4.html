@@ -163,7 +163,8 @@ function tabFlights(){
   let h='<h3 style="margin-bottom:16px;">✈️ Vuelos desde '+fromCity+'</h3>';
   h+='<div style="display:flex;gap:12px;margin-bottom:16px;"><div style="flex:1;background:#1e293b;border-radius:10px;padding:14px;text-align:center;"><div style="color:#94a3b8;font-size:11px;">MAS BARATO</div><div style="font-size:20px;font-weight:700;color:#4ade80;">USD '+(f.cheapest_price||'?')+'</div></div><div style="flex:1;background:#1e293b;border-radius:10px;padding:14px;text-align:center;"><div style="color:#94a3b8;font-size:11px;">MAS RAPIDO</div><div style="font-size:20px;font-weight:700;color:#38bdf8;">'+(f.fastest_duration_hours||'?')+'h</div></div></div>';
   opts.forEach(function(o){
-    h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">'+o.airline+'</div><div style="color:#4ade80;font-weight:700;font-size:18px;">USD '+o.price_usd+'</div></div><div style="color:#94a3b8;font-size:13px;margin-top:8px;">⏱️ '+o.duration_hours+'h · '+(o.stops===0?'Directo':o.stops+' escala(s)')+'</div></div>';
+    var searchUrl='https://www.google.com/travel/flights?q=flights+from+'+encodeURIComponent(fromCity)+'+to+'+encodeURIComponent((destData._name||'').split(',')[0])+'+'+encodeURIComponent(o.airline);
+    h+='<div onclick="window.open(\''+searchUrl+'\',\'_blank\')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;" onmouseover="this.style.borderColor=\'#38bdf8\'" onmouseout="this.style.borderColor=\'#334155\'"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">'+o.airline+'</div><div style="color:#4ade80;font-weight:700;font-size:18px;">USD '+o.price_usd+'</div></div><div style="color:#94a3b8;font-size:13px;margin-top:8px;">⏱️ '+o.duration_hours+'h · '+(o.stops===0?'Directo':o.stops+' escala(s)')+'</div><div style="color:#38bdf8;font-size:11px;margin-top:4px;">Click para buscar en Google Flights →</div></div>';
   });
   return h;
 }
@@ -186,7 +187,8 @@ function tabHotels(){
     h+='<div onclick="loadZoneHotels(\''+z.name.replace(/'/g,"\\'")+'\','+JSON.stringify([z.avg_price_per_night_usd||0]).replace(/"/g,'&quot;')+')" style="background:#1e293b;border:1px solid '+(selectedZone===z.name?'#fbbf24':'#334155')+';border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;" onmouseover="this.style.borderColor=\'#fbbf24\'" onmouseout="this.style.borderColor=\''+(selectedZone===z.name?'#fbbf24':'#334155')+'\'"><div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;">'+z.name+'</div><div style="color:#94a3b8;font-size:12px;margin-top:2px;">'+z.description+'</div></div><div style="text-align:right;"><div style="color:#4ade80;font-weight:700;">USD '+z.avg_price_per_night_usd+'/n</div><div style="color:#fbbf24;font-size:11px;">Ver hoteles →</div></div></div></div>';
   });
   var filtered=hotels;
-  if(hotelTypeFilter!=='Todos'){filtered=hotels.filter(function(ho){var t=(ho.type||'').toLowerCase();return t.indexOf(hotelTypeFilter.toLowerCase())>-1||hotelTypeFilter.toLowerCase().indexOf(t)>-1;});}
+  if(hotelTypeFilter!=='Todos'){filtered=hotels.filter(function(ho){var t=(ho.type||'').toLowerCase();var f=hotelTypeFilter.toLowerCase();return t.indexOf(f)>-1||f.indexOf(t)>-1||t.indexOf(f.substring(0,4))>-1;});
+  if(filtered.length===0){filtered=hotels;}}
   if(filtered.length>0){
     h+='<h4 style="font-size:15px;margin:16px 0 12px;">🏨 Hoteles cargados ('+filtered.length+' de '+hotels.length+'):</h4>';
     filtered.forEach(function(ho){
