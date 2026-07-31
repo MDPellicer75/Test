@@ -450,30 +450,77 @@ function tabItinerary(){
   var its=destData.suggested_itineraries||[];
   var plan=its[itinIndex||0]||{daily_plan:[]};
   var days=plan.daily_plan||[];
-  var h='<h3 style="margin-bottom:12px;">📋 Itinerario</h3>';
-  // Budget selector
-  h+='<div style="display:flex;gap:8px;margin-bottom:16px;">';
-  (its.length>0?its:[plan]).forEach(function(it,idx){
-    var active=(itinIndex||0)===idx;
-    h+='<button onclick="itinIndex='+idx+';showResults(\'itinerary\')" style="flex:1;padding:8px;border:1px solid '+(active?'#4ade80':'#334155')+';border-radius:8px;background:'+(active?'#065f46':'#1e293b')+';color:'+(active?'#4ade80':'#94a3b8')+';cursor:pointer;font-size:11px;font-weight:600;">'+(it.style||'Plan '+(idx+1))+'<br>USD '+(it.total_cost_usd||'?')+'</button>';
-  });
-  h+='</div>';
-  h+='<div style="background:#1e293b;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#94a3b8;"><strong style="color:white;">'+(plan.title||'')+'</strong> · '+(plan.days||'?')+' días · USD '+(plan.total_cost_usd||'?')+' total</div>';
-  h+='<div style="display:flex;gap:16px;flex-wrap:wrap;">';
-  h+='<div style="flex:1;min-width:250px;">';
-  days.forEach(function(d){
-    h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:12px;"><div style="font-weight:600;color:#38bdf8;margin-bottom:8px;">Día '+d.day_number+': '+d.title+'</div>';
-    (d.activities||[]).forEach(function(a,i){
-      h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><div style="width:22px;height:22px;border-radius:50%;background:#f87171;color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+(i+1)+'</div><div style="font-size:13px;">'+a+'</div></div>';
+  var currentDay=window._itDay||1;
+  var dayData=days.find(function(d){return d.day_number===currentDay;})||days[0]||{activities:[]};
+  var acts=dayData.activities||[];
+  var name=(destData._name||'').split(',')[0];
+
+  var h='';
+  // Style selector
+  if(its.length>1){
+    h+='<div style="display:flex;gap:6px;margin-bottom:12px;">';
+    its.forEach(function(it,idx){
+      var active=(itinIndex||0)===idx;
+      h+='<button onclick="itinIndex='+idx+';window._itDay=1;showResults(\'itinerary\')" style="padding:6px 12px;border:1px solid '+(active?'#4ade80':'#334155')+';border-radius:6px;background:'+(active?'#065f46':'#1e293b')+';color:'+(active?'#4ade80':'#94a3b8')+';cursor:pointer;font-size:11px;">'+(it.style||'Plan '+(idx+1))+'</button>';
     });
-    h+='<div style="color:#64748b;font-size:11px;margin-top:6px;">💰 USD '+d.estimated_cost_usd+' · 🚶 '+d.walking_km+'km</div></div>';
+    h+='</div>';
+  }
+  // Day tabs
+  h+='<div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;">';
+  days.forEach(function(d){
+    var active=d.day_number===currentDay;
+    h+='<button onclick="window._itDay='+d.day_number+';showResults(\'itinerary\')" style="padding:8px 14px;border:1px solid '+(active?'#38bdf8':'#334155')+';border-radius:8px;background:'+(active?'#1e3a5f':'#1e293b')+';color:'+(active?'#38bdf8':'#94a3b8')+';cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;">Día '+d.day_number+'</button>';
   });
   h+='</div>';
-  h+='<div style="flex:1;min-width:250px;"><div id="itin-map" style="height:350px;border-radius:12px;position:sticky;top:80px;"></div></div>';
+  // Header
+  h+='<div style="background:#1e293b;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#94a3b8;"><strong style="color:#38bdf8;">DÍA '+currentDay+' — '+name.toUpperCase()+'</strong><span style="float:right;">💰 USD '+(dayData.estimated_cost_usd||'?')+' · 🚶 '+(dayData.walking_km||'?')+'km</span></div>';
+  // Two columns
+  h+='<div style="display:flex;gap:16px;flex-wrap:wrap;">';
+  // Left: timeline
+  h+='<div style="flex:1;min-width:280px;">';
+  // Hotel start
+  h+='<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #334155;"><div style="width:28px;height:28px;border-radius:50%;background:#334155;display:flex;align-items:center;justify-content:center;">🏨</div><div style="font-size:14px;color:#94a3b8;">Hotel</div></div>';
+  // Activities with times
+  var startHour=9;
+  acts.forEach(function(a,i){
+    var hour=startHour+Math.floor(i*2.5);
+    var timeStr=(hour<10?'0':'')+hour+':'+(['00','30'][i%2]);
+    h+='<div onclick="showActivityDetail('+i+')" style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #334155;cursor:pointer;" onmouseover="this.style.background=\'#1e293b\'" onmouseout="this.style.background=\'transparent\'">';
+    h+='<div style="width:28px;height:28px;border-radius:50%;background:#f87171;color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+(i+1)+'</div>';
+    h+='<div style="color:#94a3b8;font-size:12px;width:45px;flex-shrink:0;">'+timeStr+'</div>';
+    h+='<div style="font-size:14px;flex:1;">'+a+'</div>';
+    h+='<div style="color:#64748b;font-size:16px;">›</div>';
+    h+='</div>';
+  });
   h+='</div>';
+  // Right: map
+  h+='<div style="flex:1;min-width:280px;"><div id="itin-map" style="height:380px;border-radius:12px;position:sticky;top:80px;"></div></div>';
+  h+='</div>';
+  // Activity detail modal
+  h+='<div id="activity-detail"></div>';
   return h;
 }
 var itinIndex=0;
+
+function showActivityDetail(idx){
+  var its=destData.suggested_itineraries||[];
+  var plan=its[itinIndex||0]||{daily_plan:[]};
+  var days=plan.daily_plan||[];
+  var currentDay=window._itDay||1;
+  var dayData=days.find(function(d){return d.day_number===currentDay;})||days[0]||{activities:[]};
+  var acts=dayData.activities||[];
+  var actName=acts[idx]||'';
+  var name=(destData._name||'').split(',')[0];
+  // Try to find matching activity in destData.activities for more info
+  var allActs=(destData.activities||{}).must_do||[];
+  var match=allActs.find(function(a){return actName.toLowerCase().indexOf(a.name.toLowerCase().substring(0,10))>-1||a.name.toLowerCase().indexOf(actName.toLowerCase().substring(0,10))>-1;});
+  
+  var container=document.getElementById('activity-detail');
+  if(!container) return;
+  var mapsUrl='https://www.google.com/maps/search/'+encodeURIComponent(actName+' '+name);
+  
+  container.innerHTML='<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)this.innerHTML=\'\'"><div style="background:#1e293b;border-radius:16px;padding:24px;max-width:450px;width:100%;max-height:80vh;overflow-y:auto;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="font-size:18px;">'+actName+'</h3><span onclick="document.getElementById(\'activity-detail\').innerHTML=\'\'" style="cursor:pointer;font-size:24px;color:#94a3b8;">✕</span></div>'+(match?'<div style="color:#94a3b8;font-size:13px;margin-bottom:12px;">'+(match.description||'')+'</div><div style="display:flex;gap:16px;margin-bottom:16px;"><div>⏱️ <strong>'+(match.duration_hours||'?')+'h</strong></div><div>💰 <strong>'+(match.is_free?'GRATIS':'USD '+match.cost_usd)+'</strong></div><div>⭐ <strong>'+(match.rating||'?')+'/5</strong></div></div>':'<div style="color:#94a3b8;font-size:13px;margin-bottom:12px;">Actividad del itinerario</div>')+'<div style="display:flex;gap:8px;"><a href="'+mapsUrl+'" target="_blank" style="flex:1;padding:12px;border:none;border-radius:8px;background:#334155;color:#38bdf8;text-align:center;text-decoration:none;font-weight:600;font-size:13px;">📍 Ver en Maps</a><a href="https://www.google.com/search?q='+encodeURIComponent(actName+' '+name+' tickets')+'" target="_blank" style="flex:1;padding:12px;border:none;border-radius:8px;background:linear-gradient(135deg,#38bdf8,#818cf8);color:white;text-align:center;text-decoration:none;font-weight:600;font-size:13px;">🎫 Reservar</a></div></div></div>';
+}
 function initItineraryMap(){
   if(typeof mapboxgl==='undefined') return;
   var el=document.getElementById('itin-map');
@@ -482,21 +529,26 @@ function initItineraryMap(){
   var name=(destData._name||'').split(',')[0].trim();
   var center=destCoords[name]||[2.35,48.85];
   var its=destData.suggested_itineraries||[];
-  var plan=its[0]||{daily_plan:[]};
-  var allActs=[];
-  (plan.daily_plan||[]).forEach(function(d){(d.activities||[]).forEach(function(a){allActs.push(a);});});
-  var map=new mapboxgl.Map({container:'itin-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:12});
+  var plan=its[itinIndex||0]||{daily_plan:[]};
+  var days=plan.daily_plan||[];
+  var currentDay=window._itDay||1;
+  var dayData=days.find(function(d){return d.day_number===currentDay;})||days[0]||{activities:[]};
+  var acts=dayData.activities||[];
+  var map=new mapboxgl.Map({container:'itin-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:13});
   map.on('load',function(){
-    var points=allActs.map(function(a,i){var angle=(i/allActs.length)*Math.PI*2;var r=0.012+Math.random()*0.008;return [center[0]+Math.cos(angle)*r,center[1]+Math.sin(angle)*r];});
+    var points=acts.map(function(a,i){var angle=(i/Math.max(acts.length,1))*Math.PI*2;var r=0.012+Math.random()*0.006;return [center[0]+Math.cos(angle)*r,center[1]+Math.sin(angle)*r];});
     points.forEach(function(p,i){
-      var el2=document.createElement('div');
-      el2.style.cssText='width:24px;height:24px;border-radius:50%;background:#f87171;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid white;';
-      el2.textContent=i+1;
-      new mapboxgl.Marker({element:el2}).setLngLat(p).setPopup(new mapboxgl.Popup().setHTML('<b>'+(i+1)+'. '+allActs[i]+'</b>')).addTo(map);
+      var markerEl=document.createElement('div');
+      markerEl.style.cssText='width:26px;height:26px;border-radius:50%;background:#f87171;color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid white;cursor:pointer;';
+      markerEl.textContent=i+1;
+      markerEl.onclick=function(){showActivityDetail(i);};
+      new mapboxgl.Marker({element:markerEl}).setLngLat(p).setPopup(new mapboxgl.Popup({offset:15}).setHTML('<b>'+(i+1)+'. '+acts[i]+'</b>')).addTo(map);
     });
     if(points.length>1){
       map.addSource('itin',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:points}}});
       map.addLayer({id:'itin',type:'line',source:'itin',paint:{'line-color':'#f87171','line-width':2.5}});
+      var bounds=new mapboxgl.LngLatBounds();points.forEach(function(p){bounds.extend(p);});
+      map.fitBounds(bounds,{padding:40});
     }
   });
 }
