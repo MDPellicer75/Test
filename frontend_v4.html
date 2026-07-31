@@ -116,6 +116,25 @@ function showResults(tab){
   
   render(header+tabsHtml+'<div style="max-width:600px;margin:0 auto;padding:16px;padding-bottom:20px;">'+content+'</div>');
   if(tab==='map') setTimeout(initMap,200);
+  if(tab==='hotels') setTimeout(initHotelMap,200);
+}
+
+function initHotelMap(){
+  if(typeof mapboxgl==='undefined') return;
+  var el=document.getElementById('hotel-map');
+  if(!el) return;
+  var destCoords={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16]};
+  var name=(destData._name||'').split(',')[0].trim();
+  var center=destCoords[name]||[2.35,48.85];
+  var map=new mapboxgl.Map({container:'hotel-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:12});
+  map.on('load',function(){
+    var hotels=(destData.accommodation||{}).hotels||[];
+    hotels.forEach(function(h){
+      if(h.latitude&&h.longitude){
+        new mapboxgl.Marker({color:'#fbbf24',scale:0.7}).setLngLat([h.longitude,h.latitude]).setPopup(new mapboxgl.Popup().setHTML('<b>'+h.name+'</b><br>USD '+h.price_per_night_usd+'/noche<br>⭐ '+(h.rating||'?')+'/5')).addTo(map);
+      }
+    });
+  });
 }
 
 function tabOverview(){
@@ -137,11 +156,34 @@ function tabFlights(){
 function tabHotels(){
   const a=destData.accommodation||{};
   const zones=a.recommended_zones||[];
+  const hotels=a.hotels||[];
   let h='<h3 style="margin-bottom:16px;">🏨 Alojamiento</h3>';
+  h+='<div id="hotel-map" style="height:220px;border-radius:12px;margin-bottom:16px;"></div>';
+  h+='<p style="color:#94a3b8;font-size:13px;margin-bottom:12px;">Tocá una zona para cargar 10 hoteles:</p>';
   zones.forEach(function(z){
-    h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">'+z.name+'</div><div style="color:#4ade80;font-weight:700;">USD '+z.avg_price_per_night_usd+'/n</div></div><div style="color:#94a3b8;font-size:13px;margin-top:6px;">'+z.description+'</div></div>';
+    h+='<div onclick="loadZoneHotels(\''+z.name.replace(/'/g,"\\'")+'\')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;" onmouseover="this.style.borderColor=\'#fbbf24\'" onmouseout="this.style.borderColor=\'#334155\'"><div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;">'+z.name+'</div><div style="color:#94a3b8;font-size:12px;margin-top:2px;">'+z.description+'</div></div><div style="text-align:right;"><div style="color:#4ade80;font-weight:700;">USD '+z.avg_price_per_night_usd+'/n</div><div style="color:#fbbf24;font-size:11px;">Ver hoteles →</div></div></div></div>';
   });
+  if(hotels.length>0){
+    h+='<h4 style="font-size:15px;margin:16px 0 12px;">Hoteles cargados ('+hotels.length+'):</h4>';
+    hotels.forEach(function(ho){
+      h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">'+ho.name+'</div><div style="color:#4ade80;font-weight:700;">USD '+ho.price_per_night_usd+'/n</div></div><div style="color:#94a3b8;font-size:12px;margin-top:4px;">⭐ '+(ho.rating||'?')+'/5 · '+(ho.type||'hotel')+' · 📍 '+(ho.zone||'')+'</div></div>';
+    });
+  }
+  h+='<div id="zone-results"></div>';
   return h;
+}
+async function loadZoneHotels(zone){
+  var container=document.getElementById('zone-results');
+  if(container) container.innerHTML='<div style="text-align:center;padding:20px;color:#94a3b8;">Cargando hoteles en '+zone+'...</div>';
+  try{
+    var r=await fetch(API+'/api/v1/destinations/hotels-by-zone?destination='+encodeURIComponent(destData._name)+'&zone='+encodeURIComponent(zone),{method:'POST',headers:{'Authorization':'Bearer '+token}});
+    var d=await r.json();
+    if(d.hotels&&container){
+      if(!destData.accommodation.hotels) destData.accommodation.hotels=[];
+      destData.accommodation.hotels=destData.accommodation.hotels.concat(d.hotels);
+      showResults('hotels');
+    }
+  }catch(e){if(container) container.innerHTML='<div style="color:#f87171;">Error. Intentá de nuevo.</div>';}
 }
 
 function tabActivities(){
@@ -154,33 +196,71 @@ function tabActivities(){
 }
 
 function tabMap(){
-  return '<h3 style="margin-bottom:16px;">🗺️ Mapa</h3><div id="mapview" style="height:400px;border-radius:12px;"></div>';
+  return '<h3 style="margin-bottom:16px;">🗺️ '+fromCity+' → '+(destData._name||'').split(',')[0]+'</h3><div style="display:flex;gap:8px;margin-bottom:12px;"><button onclick="mapMode=\'flight\';showResults(\'map\')" style="flex:1;padding:8px;border:1px solid '+(mapMode==='flight'?'#38bdf8':'#334155')+';border-radius:8px;background:'+(mapMode==='flight'?'#1e3a5f':'#1e293b')+';color:'+(mapMode==='flight'?'#38bdf8':'#94a3b8')+';cursor:pointer;font-size:12px;">✈️ Ruta vuelo</button><button onclick="mapMode=\'city\';showResults(\'map\')" style="flex:1;padding:8px;border:1px solid '+(mapMode==='city'?'#38bdf8':'#334155')+';border-radius:8px;background:'+(mapMode==='city'?'#1e3a5f':'#1e293b')+';color:'+(mapMode==='city'?'#38bdf8':'#94a3b8')+';cursor:pointer;font-size:12px;">🎯 Actividades</button></div><div id="mapview" style="height:400px;border-radius:12px;"></div><div style="background:#1e293b;border-radius:10px;padding:12px;margin-top:12px;font-size:12px;color:#94a3b8;">🔵 Origen · 🔴 Destino/Actividades · Línea = ruta vuelo</div>';
 }
+var mapMode='flight';
 
 function initMap(){
   if(typeof mapboxgl==='undefined') return;
-  const coords={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16]};
-  const name=(destData._name||'').split(',')[0].trim();
-  const center=coords[name]||[2.35,48.85];
-  const el=document.getElementById('mapview');
+  var el=document.getElementById('mapview');
   if(!el) return;
-  const map=new mapboxgl.Map({container:'mapview',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:12});
-  map.on('load',function(){
-    new mapboxgl.Marker({color:'#38bdf8'}).setLngLat(center).setPopup(new mapboxgl.Popup().setHTML('<b>'+name+'</b>')).addTo(map);
-    var acts=(destData.activities||{}).must_do||[];
-    acts.forEach(function(a){
-      if(a.latitude&&a.longitude){
-        new mapboxgl.Marker({color:'#f87171',scale:0.7}).setLngLat([a.longitude,a.latitude]).setPopup(new mapboxgl.Popup().setHTML('<b>'+a.name+'</b>')).addTo(map);
-      }
+  var destCoords={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16],'Londres':[-0.12,51.5],'Barcelona':[2.17,41.38]};
+  var fromCoords={'Buenos Aires':[-58.38,-34.6],'Córdoba':[-64.18,-31.42],'Rosario':[-60.63,-32.94],'Madrid':[-3.7,40.41],'Miami':[-80.19,25.76]};
+  var name=(destData._name||'').split(',')[0].trim();
+  var dest=destCoords[name]||[2.35,48.85];
+  var origin=fromCoords[fromCity]||[-58.38,-34.6];
+
+  if(mapMode==='flight'){
+    var map=new mapboxgl.Map({container:'mapview',style:'mapbox://styles/mapbox/dark-v11',center:[0,20],zoom:1.5});
+    map.on('load',function(){
+      new mapboxgl.Marker({color:'#38bdf8'}).setLngLat(origin).setPopup(new mapboxgl.Popup().setHTML('<b>📍 '+fromCity+'</b><br>Tu origen')).addTo(map);
+      new mapboxgl.Marker({color:'#f87171'}).setLngLat(dest).setPopup(new mapboxgl.Popup().setHTML('<b>📍 '+name+'</b><br>Tu destino')).addTo(map);
+      var points=[];
+      for(var i=0;i<=50;i++){var t=i/50;points.push([origin[0]+(dest[0]-origin[0])*t, origin[1]+(dest[1]-origin[1])*t+Math.sin(Math.PI*t)*10]);}
+      map.addSource('route',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:points}}});
+      map.addLayer({id:'route',type:'line',source:'route',paint:{'line-color':'#38bdf8','line-width':3,'line-dasharray':[2,2]}});
+      var bounds=new mapboxgl.LngLatBounds();bounds.extend(origin);bounds.extend(dest);
+      map.fitBounds(bounds,{padding:60});
     });
-  });
+  } else {
+    var map=new mapboxgl.Map({container:'mapview',style:'mapbox://styles/mapbox/dark-v11',center:dest,zoom:12});
+    map.on('load',function(){
+      new mapboxgl.Marker({color:'#38bdf8'}).setLngLat(dest).setPopup(new mapboxgl.Popup().setHTML('<b>'+name+'</b>')).addTo(map);
+      var acts=(destData.activities||{}).must_do||[];
+      acts.forEach(function(a){
+        if(a.latitude&&a.longitude){
+          new mapboxgl.Marker({color:'#f87171',scale:0.7}).setLngLat([a.longitude,a.latitude]).setPopup(new mapboxgl.Popup().setHTML('<b>'+a.name+'</b><br>'+(a.description||'')+'<br>'+(a.is_free?'GRATIS':'USD '+a.cost_usd))).addTo(map);
+        }
+      });
+    });
+  }
 }
 
 function tabCosts(){
-  const qs=destData.quick_stats||{};
-  const days=qs.ideal_days||5;
-  const total=(qs.avg_cost_per_day_usd||100)*days;
-  return '<h3 style="margin-bottom:16px;">💵 Costo estimado</h3><div style="background:#1e293b;border-radius:12px;padding:20px;text-align:center;"><div style="font-size:36px;font-weight:700;color:#4ade80;">USD '+total+'</div><div style="color:#94a3b8;margin-top:4px;">'+days+' días estimados</div></div>';
+  var qs=destData.quick_stats||{};
+  var f=destData.flights||{};
+  var a=destData.accommodation||{};
+  var days=qs.ideal_days||5;
+  var flightCost=f.cheapest_price||900;
+  var hotelCost=(a.avg_price_mid||150)*days;
+  var foodCost=days*60;
+  var actCost=days*40;
+  var transportCost=days*20;
+  var total=flightCost+hotelCost+foodCost+actCost+transportCost;
+  var items=[
+    {label:'✈️ Vuelos (ida y vuelta)',cost:flightCost,color:'#38bdf8'},
+    {label:'🏨 Alojamiento ('+days+' noches)',cost:hotelCost,color:'#818cf8'},
+    {label:'🍜 Comida ('+days+' días)',cost:foodCost,color:'#fbbf24'},
+    {label:'🎯 Actividades',cost:actCost,color:'#f87171'},
+    {label:'🚇 Transporte interno',cost:transportCost,color:'#4ade80'}
+  ];
+  var h='<h3 style="margin-bottom:16px;">💵 Costo total del viaje</h3>';
+  h+='<div style="background:#1e293b;border-radius:12px;padding:20px;text-align:center;margin-bottom:20px;"><div style="font-size:36px;font-weight:700;color:#4ade80;">USD '+total.toLocaleString()+'</div><div style="color:#94a3b8;font-size:13px;margin-top:4px;">'+days+' días estimados</div></div>';
+  items.forEach(function(item){
+    var pct=Math.round(item.cost/total*100);
+    h+='<div style="margin-bottom:14px;"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:13px;">'+item.label+'</span><span style="font-weight:600;color:'+item.color+';">USD '+Math.round(item.cost)+' ('+pct+'%)</span></div><div style="background:#334155;border-radius:4px;height:8px;overflow:hidden;"><div style="background:'+item.color+';height:100%;width:'+pct+'%;border-radius:4px;"></div></div></div>';
+  });
+  return h;
 }
 
 function tabClimate(){
