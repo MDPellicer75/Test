@@ -9,6 +9,9 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+.mapboxgl-popup-content{background:#1e293b!important;color:#e2e8f0!important;border-radius:10px!important;padding:12px!important;box-shadow:0 4px 20px rgba(0,0,0,0.5)!important;font-family:-apple-system,sans-serif!important;}
+.mapboxgl-popup-tip{border-top-color:#1e293b!important;}
+.mapboxgl-popup-close-button{color:#e2e8f0!important;font-size:18px!important;}
 </style>
 </head>
 <body>
@@ -164,7 +167,7 @@ function tabFlights(){
   h+='<div style="display:flex;gap:12px;margin-bottom:16px;"><div style="flex:1;background:#1e293b;border-radius:10px;padding:14px;text-align:center;"><div style="color:#94a3b8;font-size:11px;">MAS BARATO</div><div style="font-size:20px;font-weight:700;color:#4ade80;">USD '+(f.cheapest_price||'?')+'</div></div><div style="flex:1;background:#1e293b;border-radius:10px;padding:14px;text-align:center;"><div style="color:#94a3b8;font-size:11px;">MAS RAPIDO</div><div style="font-size:20px;font-weight:700;color:#38bdf8;">'+(f.fastest_duration_hours||'?')+'h</div></div></div>';
   opts.forEach(function(o){
     var searchUrl='https://www.google.com/travel/flights?q=flights+from+'+encodeURIComponent(fromCity)+'+to+'+encodeURIComponent((destData._name||'').split(',')[0])+'+'+encodeURIComponent(o.airline);
-    h+='<div onclick="window.open(\''+searchUrl+'\',\'_blank\')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;" onmouseover="this.style.borderColor=\'#38bdf8\'" onmouseout="this.style.borderColor=\'#334155\'"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">'+o.airline+'</div><div style="color:#4ade80;font-weight:700;font-size:18px;">USD '+o.price_usd+'</div></div><div style="color:#94a3b8;font-size:13px;margin-top:8px;">⏱️ '+o.duration_hours+'h · '+(o.stops===0?'Directo':o.stops+' escala(s)')+'</div><div style="color:#38bdf8;font-size:11px;margin-top:4px;">Click para buscar en Google Flights →</div></div>';
+    h+='<a href="'+searchUrl+'" target="_blank" style="text-decoration:none;color:inherit;display:block;background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;" onmouseover="this.style.borderColor=\'#38bdf8\'" onmouseout="this.style.borderColor=\'#334155\'"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;color:#e2e8f0;">'+o.airline+'</div><div style="color:#4ade80;font-weight:700;font-size:18px;">USD '+o.price_usd+'</div></div><div style="color:#94a3b8;font-size:13px;margin-top:8px;">⏱️ '+o.duration_hours+'h · '+(o.stops===0?'<span style="color:#4ade80;">Directo</span>':o.stops+' escala(s): '+(o.stop_cities||[]).join(', '))+'</div><div style="color:#38bdf8;font-size:11px;margin-top:6px;">🔗 Buscar en Google Flights →</div></a>';
   });
   return h;
 }
@@ -423,9 +426,13 @@ async function searchRoute(){
   try{
     var r=await fetch(API+'/api/v1/destinations/transport-route?destination='+encodeURIComponent(destData._name)+'&from_point='+encodeURIComponent(from)+'&to_point='+encodeURIComponent(to),{method:'POST',headers:{'Authorization':'Bearer '+token}});
     var d=await r.json();
-    var h='';
-    if(d.options){d.options.forEach(function(o){h+='<div onclick="highlightRoute(\''+o.method+'\')" style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onmouseover="this.style.borderColor=\'#38bdf8\'" onmouseout="this.style.borderColor=\'#334155\'"><div><div style="font-weight:600;">'+o.method+'</div><div style="color:#94a3b8;font-size:11px;">'+(o.details||'')+'</div></div><div style="text-align:right;"><div style="font-size:13px;">⏱️ '+o.duration_minutes+' min</div><div style="color:#4ade80;font-weight:700;">USD '+o.cost_usd+'</div>'+(o.is_cheapest?'<div style="font-size:10px;color:#4ade80;">💰 Más barato</div>':'')+(o.is_fastest?'<div style="font-size:10px;color:#38bdf8;">⚡ Más rápido</div>':'')+'</div></div>';});}
-    if(d.car_rental&&d.car_rental.agencies){h+='<h4 style="color:#fbbf24;font-size:13px;margin:12px 0 8px;">🚗 Alquiler de auto:</h4>';d.car_rental.agencies.forEach(function(ag){h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;"><div><div style="font-weight:600;">'+ag.name+'</div><div style="color:#94a3b8;font-size:11px;">📍 '+(ag.location||'')+'</div></div><div style="color:#4ade80;font-weight:700;">USD '+ag.price_per_day_usd+'/día</div></div>';});}
+    var h='<div style="background:#0f172a;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:12px;"><div style="font-weight:600;color:#38bdf8;margin-bottom:8px;">📍 '+(d.from||from)+' → '+(d.to||to)+'</div>';
+    if(d.options){d.options.forEach(function(o){
+      var col=o.is_cheapest?'#4ade80':o.is_fastest?'#38bdf8':'#94a3b8';
+      h+='<div onclick="highlightRoute(\''+o.method+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:10px;margin-bottom:6px;background:#1e293b;border:1px solid #334155;border-radius:8px;cursor:pointer;" onmouseover="this.style.borderColor=\''+col+'\'" onmouseout="this.style.borderColor=\'#334155\'"><div><div style="font-weight:600;color:'+col+';">'+o.method+'</div><div style="color:#94a3b8;font-size:11px;margin-top:2px;">'+(o.details||'')+'</div></div><div style="text-align:right;"><div style="font-size:13px;color:#e2e8f0;">⏱️ '+o.duration_minutes+' min</div><div style="color:#4ade80;font-weight:700;">USD '+o.cost_usd+'</div>'+(o.is_cheapest?'<div style="font-size:9px;background:#065f46;color:#4ade80;padding:1px 4px;border-radius:3px;margin-top:2px;">💰 Más barato</div>':'')+(o.is_fastest?'<div style="font-size:9px;background:#1e3a5f;color:#38bdf8;padding:1px 4px;border-radius:3px;margin-top:2px;">⚡ Más rápido</div>':'')+'</div></div>';
+    });}
+    h+='</div>';
+    if(d.car_rental&&d.car_rental.agencies){h+='<div style="background:#0f172a;border:1px solid #fbbf24;border-radius:10px;padding:12px;margin-bottom:12px;"><div style="font-weight:600;color:#fbbf24;margin-bottom:8px;">🚗 Alquiler de auto</div><div style="color:#94a3b8;font-size:12px;margin-bottom:8px;">'+(d.car_rental.why||'')+'</div>';d.car_rental.agencies.forEach(function(ag){h+='<div style="display:flex;justify-content:space-between;padding:8px;background:#1e293b;border-radius:8px;margin-bottom:6px;"><div><div style="font-weight:600;">'+ag.name+'</div><div style="color:#94a3b8;font-size:11px;">📍 '+(ag.location||'')+'</div></div><div style="color:#4ade80;font-weight:700;">USD '+ag.price_per_day_usd+'/día</div></div>';});h+='</div>';}
     c.innerHTML=h||'Sin resultados';
   }catch(e){c.innerHTML='<div style="color:#f87171;">Error</div>';}
 }
