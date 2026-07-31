@@ -1020,7 +1020,7 @@ function initActivitiesMap(){
 }
 
 // ─── INIT ──────────────────────────────────────
-screenLogin();
+try { screenLogin(); } catch(e) { document.getElementById('app').innerHTML = '<div style="padding:40px;color:red;"><h2>Error cargando la app:</h2><pre>'+e.message+'</pre><p>Recargá la página.</p></div>'; console.error(e); }
 </script>
 </body>
 </html>
