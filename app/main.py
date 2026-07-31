@@ -73,7 +73,7 @@ app.include_router(health_router)
 # Frontend
 @app.get("/app", include_in_schema=False)
 async def serve_frontend():
-    return FileResponse(Path(__file__).parent.parent / "frontend.html")
+    return FileResponse(Path(__file__).parent.parent / "frontend_v4.html")
 
 # API v1
 app.include_router(auth_router, prefix="/api/v1")

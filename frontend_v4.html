@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TravelOS</title>
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css"/>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+</style>
+</head>
+<body>
+<div id="app">Cargando...</div>
+<script>
+const API=window.location.origin;
+let token='',destData={},fromCity='Buenos Aires',selections={flight:null,hotel:null,activities:[]};
+const TK=new URLSearchParams(window.location.search).get('tk')||localStorage.getItem('mapbox_tk')||'';
+if(TK&&typeof mapboxgl!=='undefined'){mapboxgl.accessToken=TK;localStorage.setItem('mapbox_tk',TK);}
+
+function render(h){document.getElementById('app').innerHTML=h;}
+
+function screenLogin(err){
+  render(`<div style="max-width:400px;margin:60px auto;padding:20px;">
+    <div style="text-align:center;margin-bottom:30px;"><h1 style="font-size:32px;background:linear-gradient(90deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">TravelOS</h1><p style="color:#94a3b8;margin-top:5px;">Tu copiloto de viaje con IA</p></div>
+    <div style="background:#1e293b;border-radius:16px;padding:30px;">
+      <h2 style="text-align:center;margin-bottom:20px;">Iniciá tu aventura</h2>
+      <input id="f-email" type="email" placeholder="Email" value="demo@travelos.com" style="width:100%;padding:14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:white;font-size:16px;margin-bottom:12px;outline:none;">
+      <input id="f-pass" type="password" placeholder="Contraseña (min 8)" value="Password123!" style="width:100%;padding:14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:white;font-size:16px;margin-bottom:12px;outline:none;">
+      <input id="f-name" type="text" placeholder="Tu nombre" style="width:100%;padding:14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:white;font-size:16px;margin-bottom:12px;outline:none;">
+      <input id="f-from" type="text" placeholder="Ciudad de origen" value="Buenos Aires" style="width:100%;padding:14px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:white;font-size:16px;margin-bottom:12px;outline:none;">
+      <button onclick="doRegister()" style="width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#38bdf8,#818cf8);color:white;">Crear cuenta</button>
+      <button onclick="doLogin()" style="width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;background:#334155;color:white;margin-top:10px;">Ya tengo cuenta</button>
+      ${err?'<p style="color:#f87171;text-align:center;margin-top:12px;font-size:13px;">'+err+'</p>':''}
+    </div></div>`);
+}
+
+async function doRegister(){
+  const email=document.getElementById('f-email').value,pass=document.getElementById('f-pass').value,name=document.getElementById('f-name').value||'Viajero';
+  fromCity=document.getElementById('f-from').value||'Buenos Aires';
+  try{
+    let r=await fetch(API+'/api/v1/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pass,name:name,language:'es'})});
+    if(r.status===409) return doLogin();
+    const d=await r.json();
+    if(d.access_token){token=d.access_token;screenHome();}else{screenLogin(d.detail||'Error');}
+  }catch(e){screenLogin('Error de conexión');}
+}
+
+async function doLogin(){
+  const email=document.getElementById('f-email').value,pass=document.getElementById('f-pass').value;
+  fromCity=document.getElementById('f-from').value||'Buenos Aires';
+  try{
+    const r=await fetch(API+'/api/v1/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pass})});
+    const d=await r.json();
+    if(d.access_token){token=d.access_token;screenHome();}else{screenLogin(d.detail||'Error');}
+  }catch(e){screenLogin('Error de conexión');}
+}
+
+function screenHome(){
+  render(`<div style="background:#1e293b;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #334155;">
+    <h1 style="font-size:20px;background:linear-gradient(90deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">TravelOS</h1>
+    <span style="color:#94a3b8;font-size:13px;">Desde: <strong style="color:white;">${fromCity}</strong> <span onclick="screenLogin()" style="color:#f87171;cursor:pointer;margin-left:8px;">Salir</span></span>
+  </div>
+  <div style="max-width:600px;margin:0 auto;padding:20px;">
+    <div style="position:relative;"><input id="dest-input" type="text" placeholder="A donde queres ir?" style="width:100%;padding:16px 16px 16px 45px;border:1px solid #334155;border-radius:12px;background:#0f172a;color:white;font-size:18px;outline:none;" onkeypress="if(event.key==='Enter')doExplore()"><span style="position:absolute;left:15px;top:16px;font-size:20px;">🌍</span></div>
+    <p style="color:#64748b;margin-top:24px;font-size:14px;font-weight:600;">Destinos populares</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;">
+      <div onclick="doExplore('Tokyo, Japan')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;cursor:pointer;text-align:center;"><div style="font-size:32px;">🗼</div><div style="font-weight:600;margin-top:6px;">Tokyo</div></div>
+      <div onclick="doExplore('Paris, France')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;cursor:pointer;text-align:center;"><div style="font-size:32px;">🇫🇷</div><div style="font-weight:600;margin-top:6px;">París</div></div>
+      <div onclick="doExplore('New York, USA')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;cursor:pointer;text-align:center;"><div style="font-size:32px;">🗽</div><div style="font-weight:600;margin-top:6px;">New York</div></div>
+      <div onclick="doExplore('Rome, Italy')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;cursor:pointer;text-align:center;"><div style="font-size:32px;">🏛️</div><div style="font-weight:600;margin-top:6px;">Roma</div></div>
+      <div onclick="doExplore('Bali, Indonesia')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;cursor:pointer;text-align:center;"><div style="font-size:32px;">🏝️</div><div style="font-weight:600;margin-top:6px;">Bali</div></div>
+      <div onclick="doExplore('Cancun, Mexico')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;cursor:pointer;text-align:center;"><div style="font-size:32px;">🏖️</div><div style="font-weight:600;margin-top:6px;">Cancún</div></div>
+    </div>
+  </div>`);
+}
+
+async function doExplore(dest){
+  const destination=dest||document.getElementById('dest-input').value;
+  if(!destination) return;
+  render('<div style="text-align:center;padding:100px 20px;"><div style="width:50px;height:50px;border:4px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 20px;"></div><h3>Analizando '+destination+'...</h3><p style="color:#94a3b8;margin-top:10px;">Buscando info desde '+fromCity+'</p><style>@keyframes spin{to{transform:rotate(360deg)}}</style></div>');
+  try{
+    const r=await fetch(API+'/api/v1/destinations/explore',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({destination:destination,from_city:fromCity,travelers:1,budget_usd:2500})});
+    if(r.status===401){screenLogin('Sesión expirada');return;}
+    destData=await r.json();
+    destData._name=destination;
+    showResults('overview');
+  }catch(e){render('<div style="text-align:center;padding:80px;"><h3 style="color:#f87171;">Error</h3><button onclick="screenHome()" style="margin-top:20px;padding:12px 24px;border:none;border-radius:8px;background:#334155;color:white;cursor:pointer;">Volver</button></div>');}
+}
+
+// Simple tab system
+function showResults(tab){
+  const name=(destData._name||'').split(',')[0];
+  const tabs=['overview','flights','hotels','activities','map','costs','climate','safety'];
+  const icons=['📊','✈️','🏨','🎯','🗺️','💵','🌤️','🛡️'];
+  const labels=['Resumen','Vuelos','Hoteles','Actividades','Mapa','Costos','Clima','Seguridad'];
+  
+  let header='<div style="background:#1e293b;padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #334155;"><span onclick="screenHome()" style="cursor:pointer;font-size:20px;">←</span><h2 style="font-size:18px;flex:1;">'+name+'</h2><span style="color:#94a3b8;font-size:12px;">desde '+fromCity+'</span></div>';
+  let tabsHtml='<div style="display:flex;overflow-x:auto;background:#1e293b;border-bottom:1px solid #334155;scrollbar-width:none;">';
+  for(let i=0;i<tabs.length;i++){
+    const active=tabs[i]===tab;
+    tabsHtml+='<div onclick="showResults(\''+tabs[i]+'\')" style="padding:10px 14px;font-size:12px;cursor:pointer;white-space:nowrap;border-bottom:2px solid '+(active?'#38bdf8':'transparent')+';color:'+(active?'#38bdf8':'#94a3b8')+';">'+icons[i]+' '+labels[i]+'</div>';
+  }
+  tabsHtml+='</div>';
+  
+  let content='';
+  if(tab==='overview') content=tabOverview();
+  else if(tab==='flights') content=tabFlights();
+  else if(tab==='hotels') content=tabHotels();
+  else if(tab==='activities') content=tabActivities();
+  else if(tab==='map') content=tabMap();
+  else if(tab==='costs') content=tabCosts();
+  else if(tab==='climate') content=tabClimate();
+  else if(tab==='safety') content=tabSafety();
+  
+  render(header+tabsHtml+'<div style="max-width:600px;margin:0 auto;padding:16px;padding-bottom:20px;">'+content+'</div>');
+  if(tab==='map') setTimeout(initMap,200);
+}
+
+function tabOverview(){
+  const qs=destData.quick_stats||{};
+  return '<div style="background:#1e293b;border-radius:12px;padding:20px;margin-bottom:16px;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;"><div><div style="color:#94a3b8;font-size:11px;">COSTO/DIA</div><div style="font-size:24px;font-weight:700;color:#4ade80;">USD '+(qs.avg_cost_per_day_usd||'?')+'</div></div><div><div style="color:#94a3b8;font-size:11px;">DIAS IDEALES</div><div style="font-size:24px;font-weight:700;">'+(qs.ideal_days||'?')+'</div></div></div></div>';
+}
+
+function tabFlights(){
+  const f=destData.flights||{};
+  const opts=f.options||[];
+  let h='<h3 style="margin-bottom:16px;">✈️ Vuelos desde '+fromCity+'</h3>';
+  h+='<div style="display:flex;gap:12px;margin-bottom:16px;"><div style="flex:1;background:#1e293b;border-radius:10px;padding:14px;text-align:center;"><div style="color:#94a3b8;font-size:11px;">MAS BARATO</div><div style="font-size:20px;font-weight:700;color:#4ade80;">USD '+(f.cheapest_price||'?')+'</div></div><div style="flex:1;background:#1e293b;border-radius:10px;padding:14px;text-align:center;"><div style="color:#94a3b8;font-size:11px;">MAS RAPIDO</div><div style="font-size:20px;font-weight:700;color:#38bdf8;">'+(f.fastest_duration_hours||'?')+'h</div></div></div>';
+  opts.forEach(function(o){
+    h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">'+o.airline+'</div><div style="color:#4ade80;font-weight:700;font-size:18px;">USD '+o.price_usd+'</div></div><div style="color:#94a3b8;font-size:13px;margin-top:8px;">⏱️ '+o.duration_hours+'h · '+(o.stops===0?'Directo':o.stops+' escala(s)')+'</div></div>';
+  });
+  return h;
+}
+
+function tabHotels(){
+  const a=destData.accommodation||{};
+  const zones=a.recommended_zones||[];
+  let h='<h3 style="margin-bottom:16px;">🏨 Alojamiento</h3>';
+  zones.forEach(function(z){
+    h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">'+z.name+'</div><div style="color:#4ade80;font-weight:700;">USD '+z.avg_price_per_night_usd+'/n</div></div><div style="color:#94a3b8;font-size:13px;margin-top:6px;">'+z.description+'</div></div>';
+  });
+  return h;
+}
+
+function tabActivities(){
+  const acts=(destData.activities||{}).must_do||[];
+  let h='<h3 style="margin-bottom:16px;">🎯 Actividades</h3>';
+  acts.forEach(function(a){
+    h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">'+a.name+'</div><div style="color:#4ade80;">'+(a.is_free?'GRATIS':'USD '+a.cost_usd)+'</div></div><div style="color:#94a3b8;font-size:12px;margin-top:6px;">'+(a.description||'')+'</div></div>';
+  });
+  return h;
+}
+
+function tabMap(){
+  return '<h3 style="margin-bottom:16px;">🗺️ Mapa</h3><div id="mapview" style="height:400px;border-radius:12px;"></div>';
+}
+
+function initMap(){
+  if(typeof mapboxgl==='undefined') return;
+  const coords={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16]};
+  const name=(destData._name||'').split(',')[0].trim();
+  const center=coords[name]||[2.35,48.85];
+  const el=document.getElementById('mapview');
+  if(!el) return;
+  const map=new mapboxgl.Map({container:'mapview',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:12});
+  map.on('load',function(){
+    new mapboxgl.Marker({color:'#38bdf8'}).setLngLat(center).setPopup(new mapboxgl.Popup().setHTML('<b>'+name+'</b>')).addTo(map);
+    var acts=(destData.activities||{}).must_do||[];
+    acts.forEach(function(a){
+      if(a.latitude&&a.longitude){
+        new mapboxgl.Marker({color:'#f87171',scale:0.7}).setLngLat([a.longitude,a.latitude]).setPopup(new mapboxgl.Popup().setHTML('<b>'+a.name+'</b>')).addTo(map);
+      }
+    });
+  });
+}
+
+function tabCosts(){
+  const qs=destData.quick_stats||{};
+  const days=qs.ideal_days||5;
+  const total=(qs.avg_cost_per_day_usd||100)*days;
+  return '<h3 style="margin-bottom:16px;">💵 Costo estimado</h3><div style="background:#1e293b;border-radius:12px;padding:20px;text-align:center;"><div style="font-size:36px;font-weight:700;color:#4ade80;">USD '+total+'</div><div style="color:#94a3b8;margin-top:4px;">'+days+' días estimados</div></div>';
+}
+
+function tabClimate(){
+  const c=destData.climate||{};
+  const months=c.by_month||[];
+  let h='<h3 style="margin-bottom:16px;">🌤️ Clima</h3><div style="display:flex;overflow-x:auto;gap:10px;">';
+  months.forEach(function(m){
+    h+='<div style="min-width:100px;background:#1e293b;border:1px solid '+(m.is_best_time?'#4ade80':'#334155')+';border-radius:10px;padding:12px;text-align:center;flex-shrink:0;"><div style="font-weight:600;font-size:12px;">'+m.month+'</div><div style="font-size:22px;margin:6px 0;">'+m.avg_temp_celsius+'°</div><div style="font-size:10px;color:#94a3b8;">🌧️'+m.rain_days+'d</div></div>';
+  });
+  h+='</div>';
+  return h;
+}
+
+function tabSafety(){
+  const s=destData.safety||{};
+  return '<h3 style="margin-bottom:16px;">🛡️ Seguridad</h3><div style="background:#1e293b;border-radius:12px;padding:20px;text-align:center;margin-bottom:16px;"><div style="font-size:48px;font-weight:700;color:'+(s.safety_score>=8?'#4ade80':'#fbbf24')+';">'+(s.safety_score||'?')+'/10</div></div><div style="background:#1e293b;border-radius:12px;padding:16px;font-size:13px;line-height:2;">Visa: '+(s.visa_required?'Necesitas':'No necesitas')+'<br>Agua potable: '+(s.tap_water_safe?'Si':'No')+'<br>Emergencias: '+(s.emergency_number||'?')+'</div>';
+}
+
+try{screenLogin();}catch(e){document.getElementById('app').innerHTML='<div style="padding:40px;color:red;"><h2>Error:</h2><pre>'+e.message+'</pre></div>';}
+</script>
+</body>
+</html>
