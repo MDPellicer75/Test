@@ -124,6 +124,7 @@ function showResults(tab){
   render(header+tabsHtml+'<div style="max-width:600px;margin:0 auto;padding:16px;padding-bottom:20px;">'+content+'</div>');
   if(tab==='map') setTimeout(initMap,200);
   if(tab==='hotels') setTimeout(initHotelMap,200);
+  if(tab==='activities') setTimeout(initActMap,200);
   if(tab==='itinerary') setTimeout(initItineraryMap,200);
   if(tab==='transport') setTimeout(initTransportMap,200);
 }
@@ -135,12 +136,12 @@ function initHotelMap(){
   var destCoords={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16]};
   var name=(destData._name||'').split(',')[0].trim();
   var center=destCoords[name]||[2.35,48.85];
-  var map=new mapboxgl.Map({container:'hotel-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:12});
-  map.on('load',function(){
+  hotelMapInstance=new mapboxgl.Map({container:'hotel-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:12});
+  hotelMapInstance.on('load',function(){
     var hotels=(destData.accommodation||{}).hotels||[];
     hotels.forEach(function(h){
       if(h.latitude&&h.longitude){
-        new mapboxgl.Marker({color:'#fbbf24',scale:0.7}).setLngLat([h.longitude,h.latitude]).setPopup(new mapboxgl.Popup().setHTML('<b>'+h.name+'</b><br>USD '+h.price_per_night_usd+'/noche<br>⭐ '+(h.rating||'?')+'/5')).addTo(map);
+        new mapboxgl.Marker({color:'#fbbf24',scale:0.6}).setLngLat([h.longitude,h.latitude]).setPopup(new mapboxgl.Popup().setHTML('<b>'+h.name+'</b><br>USD '+h.price_per_night_usd+'/n<br>⭐ '+(h.rating||'?')+'/5<br>'+(h.type||''))).addTo(hotelMapInstance);
       }
     });
   });
@@ -167,41 +168,113 @@ function tabHotels(){
   const zones=a.recommended_zones||[];
   const hotels=a.hotels||[];
   let h='<h3 style="margin-bottom:16px;">🏨 Alojamiento</h3>';
-  h+='<div id="hotel-map" style="height:220px;border-radius:12px;margin-bottom:16px;"></div>';
-  h+='<p style="color:#94a3b8;font-size:13px;margin-bottom:12px;">Tocá una zona para cargar 10 hoteles:</p>';
-  zones.forEach(function(z){
-    h+='<div onclick="loadZoneHotels(\''+z.name.replace(/'/g,"\\'")+'\')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;cursor:pointer;" onmouseover="this.style.borderColor=\'#fbbf24\'" onmouseout="this.style.borderColor=\'#334155\'"><div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;">'+z.name+'</div><div style="color:#94a3b8;font-size:12px;margin-top:2px;">'+z.description+'</div></div><div style="text-align:right;"><div style="color:#4ade80;font-weight:700;">USD '+z.avg_price_per_night_usd+'/n</div><div style="color:#fbbf24;font-size:11px;">Ver hoteles →</div></div></div></div>';
+  h+='<div id="hotel-map" style="height:250px;border-radius:12px;margin-bottom:16px;"></div>';
+  h+='<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">';
+  var types=['Todos','Luxury','Boutique','Hotel','Hostel','Apartment'];
+  types.forEach(function(t){
+    var active=(hotelTypeFilter===t);
+    h+='<button onclick="hotelTypeFilter=\''+t+'\';showResults(\'hotels\')" style="padding:6px 12px;border:1px solid '+(active?'#fbbf24':'#334155')+';border-radius:6px;background:'+(active?'#713f12':'#1e293b')+';color:'+(active?'#fbbf24':'#94a3b8')+';cursor:pointer;font-size:11px;">'+t+'</button>';
   });
-  if(hotels.length>0){
-    h+='<h4 style="font-size:15px;margin:16px 0 12px;">Hoteles cargados ('+hotels.length+'):</h4>';
-    hotels.forEach(function(ho){
-      h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">'+ho.name+'</div><div style="color:#4ade80;font-weight:700;">USD '+ho.price_per_night_usd+'/n</div></div><div style="color:#94a3b8;font-size:12px;margin-top:4px;">⭐ '+(ho.rating||'?')+'/5 · '+(ho.type||'hotel')+' · 📍 '+(ho.zone||'')+'</div></div>';
+  h+='</div>';
+  h+='<p style="color:#94a3b8;font-size:13px;margin-bottom:12px;">Tocá una zona → el mapa se mueve + carga hoteles:</p>';
+  zones.forEach(function(z){
+    h+='<div onclick="loadZoneHotels(\''+z.name.replace(/'/g,"\\'")+'\','+JSON.stringify([z.avg_price_per_night_usd||0]).replace(/"/g,'&quot;')+')" style="background:#1e293b;border:1px solid '+(selectedZone===z.name?'#fbbf24':'#334155')+';border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;" onmouseover="this.style.borderColor=\'#fbbf24\'" onmouseout="this.style.borderColor=\''+(selectedZone===z.name?'#fbbf24':'#334155')+'\'"><div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;">'+z.name+'</div><div style="color:#94a3b8;font-size:12px;margin-top:2px;">'+z.description+'</div></div><div style="text-align:right;"><div style="color:#4ade80;font-weight:700;">USD '+z.avg_price_per_night_usd+'/n</div><div style="color:#fbbf24;font-size:11px;">Ver hoteles →</div></div></div></div>';
+  });
+  var filtered=hotels;
+  if(hotelTypeFilter!=='Todos'){filtered=hotels.filter(function(ho){return (ho.type||'').toLowerCase().indexOf(hotelTypeFilter.toLowerCase())>-1;});}
+  if(filtered.length>0){
+    h+='<h4 style="font-size:15px;margin:16px 0 12px;">🏨 Hoteles cargados ('+filtered.length+' de '+hotels.length+'):</h4>';
+    filtered.forEach(function(ho){
+      h+='<div onclick="focusHotelOnMap('+ho.latitude+','+ho.longitude+')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;" onmouseover="this.style.borderColor=\'#fbbf24\'" onmouseout="this.style.borderColor=\'#334155\'"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">'+ho.name+'</div><div style="color:#4ade80;font-weight:700;">USD '+ho.price_per_night_usd+'/n</div></div><div style="color:#94a3b8;font-size:12px;margin-top:4px;">⭐ '+(ho.rating||'?')+'/5 · '+(ho.type||'hotel')+' · 📍 '+(ho.zone||'')+'</div></div>';
     });
+    h+='<button onclick="loadMoreZoneHotels()" id="btn-more-h" style="width:100%;margin-top:8px;padding:12px;border:1px solid #fbbf24;border-radius:10px;background:transparent;color:#fbbf24;font-weight:600;cursor:pointer;font-size:13px;">Cargar 10 más</button>';
   }
-  h+='<div id="zone-results"></div>';
   return h;
 }
+var hotelTypeFilter='Todos';
+var selectedZone='';
+var hotelMapInstance=null;
+
 async function loadZoneHotels(zone){
-  var container=document.getElementById('zone-results');
-  if(container) container.innerHTML='<div style="text-align:center;padding:20px;color:#94a3b8;">Cargando hoteles en '+zone+'...</div>';
+  selectedZone=zone;
+  showResults('hotels');
+  var container=document.getElementById('hotel-map');
   try{
     var r=await fetch(API+'/api/v1/destinations/hotels-by-zone?destination='+encodeURIComponent(destData._name)+'&zone='+encodeURIComponent(zone),{method:'POST',headers:{'Authorization':'Bearer '+token}});
     var d=await r.json();
-    if(d.hotels&&container){
+    if(d.hotels){
       if(!destData.accommodation.hotels) destData.accommodation.hotels=[];
       destData.accommodation.hotels=destData.accommodation.hotels.concat(d.hotels);
       showResults('hotels');
     }
-  }catch(e){if(container) container.innerHTML='<div style="color:#f87171;">Error. Intentá de nuevo.</div>';}
+  }catch(e){}
+}
+async function loadMoreZoneHotels(){
+  var btn=document.getElementById('btn-more-h');
+  if(btn) btn.textContent='Cargando...';
+  var zone=selectedZone||(destData.accommodation.recommended_zones||[])[0]?.name||'centro';
+  try{
+    var r=await fetch(API+'/api/v1/destinations/hotels-by-zone?destination='+encodeURIComponent(destData._name)+'&zone='+encodeURIComponent(zone),{method:'POST',headers:{'Authorization':'Bearer '+token}});
+    var d=await r.json();
+    if(d.hotels){
+      if(!destData.accommodation.hotels) destData.accommodation.hotels=[];
+      destData.accommodation.hotels=destData.accommodation.hotels.concat(d.hotels);
+      showResults('hotels');
+    }
+  }catch(e){if(btn) btn.textContent='Error, intentá de nuevo';}
+}
+function focusHotelOnMap(lat,lng){
+  if(hotelMapInstance&&lat&&lng){hotelMapInstance.flyTo({center:[lng,lat],zoom:15,duration:1000});}
 }
 
 function tabActivities(){
   const acts=(destData.activities||{}).must_do||[];
-  let h='<h3 style="margin-bottom:16px;">🎯 Actividades</h3>';
-  acts.forEach(function(a){
-    h+='<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:12px;"><div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">'+a.name+'</div><div style="color:#4ade80;">'+(a.is_free?'GRATIS':'USD '+a.cost_usd)+'</div></div><div style="color:#94a3b8;font-size:12px;margin-top:6px;">'+(a.description||'')+'</div></div>';
+  let h='<h3 style="margin-bottom:16px;">🎯 Actividades ('+acts.length+')</h3>';
+  h+='<div id="act-map" style="height:250px;border-radius:12px;margin-bottom:16px;"></div>';
+  h+='<p style="color:#94a3b8;font-size:12px;margin-bottom:12px;">Tocá una actividad → el mapa se centra ahí</p>';
+  acts.forEach(function(a,i){
+    h+='<div onclick="focusActOnMap('+a.latitude+','+a.longitude+')" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;" onmouseover="this.style.borderColor=\'#f87171\'" onmouseout="this.style.borderColor=\'#334155\'"><div style="display:flex;justify-content:space-between;align-items:center;"><div style="display:flex;align-items:center;gap:10px;"><div style="width:24px;height:24px;border-radius:50%;background:#f87171;color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+(i+1)+'</div><div><div style="font-weight:600;">'+a.name+'</div><div style="color:#94a3b8;font-size:11px;margin-top:2px;">'+(a.description||'').substring(0,60)+'</div></div></div><div style="text-align:right;"><div style="color:#4ade80;font-weight:600;">'+(a.is_free?'GRATIS':'USD '+a.cost_usd)+'</div><div style="color:#64748b;font-size:10px;margin-top:2px;">'+a.duration_hours+'h</div></div></div></div>';
   });
+  h+='<button onclick="loadMoreActs()" id="btn-more-a" style="width:100%;margin-top:8px;padding:12px;border:1px solid #f87171;border-radius:10px;background:transparent;color:#f87171;font-weight:600;cursor:pointer;font-size:13px;">🎯 Cargar más actividades</button>';
   return h;
+}
+var actMapInstance=null;
+function initActMap(){
+  if(typeof mapboxgl==='undefined') return;
+  var el=document.getElementById('act-map');
+  if(!el) return;
+  var destCoords={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16]};
+  var name=(destData._name||'').split(',')[0].trim();
+  var center=destCoords[name]||[2.35,48.85];
+  actMapInstance=new mapboxgl.Map({container:'act-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:12});
+  actMapInstance.on('load',function(){
+    var acts=(destData.activities||{}).must_do||[];
+    acts.forEach(function(a,i){
+      if(a.latitude&&a.longitude){
+        var el2=document.createElement('div');
+        el2.style.cssText='width:22px;height:22px;border-radius:50%;background:#f87171;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid white;';
+        el2.textContent=i+1;
+        new mapboxgl.Marker({element:el2}).setLngLat([a.longitude,a.latitude]).setPopup(new mapboxgl.Popup().setHTML('<b>'+(i+1)+'. '+a.name+'</b><br>'+(a.is_free?'GRATIS':'USD '+a.cost_usd))).addTo(actMapInstance);
+      }
+    });
+  });
+}
+function focusActOnMap(lat,lng){
+  if(actMapInstance&&lat&&lng){actMapInstance.flyTo({center:[lng,lat],zoom:16,duration:1000});}
+}
+async function loadMoreActs(){
+  var btn=document.getElementById('btn-more-a');
+  if(btn) btn.textContent='Cargando...';
+  try{
+    var r=await fetch(API+'/api/v1/destinations/more-activities',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({destination:destData._name,from_city:fromCity,travelers:1})});
+    var d=await r.json();
+    if(d.activities){
+      if(!destData.activities) destData.activities={};
+      if(!destData.activities.must_do) destData.activities.must_do=[];
+      destData.activities.must_do=destData.activities.must_do.concat(d.activities);
+      showResults('activities');
+    }
+  }catch(e){if(btn) btn.textContent='Error';}
 }
 
 function tabMap(){
