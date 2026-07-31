@@ -23,7 +23,8 @@ let userName = '';
 let fromCity = 'Buenos Aires';
 let selections = {flight:null, hotel:null, activities:[]};
 const MAPBOX_TOKEN = new URLSearchParams(window.location.search).get('tk') || localStorage.getItem('mapbox_tk') || '';
-if(MAPBOX_TOKEN) { mapboxgl.accessToken = MAPBOX_TOKEN; localStorage.setItem('mapbox_tk', MAPBOX_TOKEN); }
+const HAS_MAPBOX = typeof mapboxgl !== 'undefined' && MAPBOX_TOKEN;
+if(HAS_MAPBOX) { mapboxgl.accessToken = MAPBOX_TOKEN; localStorage.setItem('mapbox_tk', MAPBOX_TOKEN); }
 
 
 // ─── RENDER ENGINE ─────────────────────────────
@@ -244,11 +245,13 @@ function screenResults(tab){
   const content=document.getElementById('tab-content');
   const fn={overview:tabOverview,flights:tabFlights,transport:tabTransport,hotels:tabHotels,food:tabFood,activities:tabActivities,costs:tabCosts,map:tabMap,climate:tabClimate,safety:tabSafety,money:tabMoney,compare:tabCompare,itinerary:tabItinerary,chat:tabChat};
   if(fn[tab]) content.innerHTML=fn[tab]();
-  if(tab==='map') initMap();
-  if(tab==='hotels') initHotelMap();
-  if(tab==='activities') initActivitiesMap();
-  if(tab==='transport') initTransportMap();
-  if(tab==='itinerary') initItineraryMap();
+  if(HAS_MAPBOX){
+    if(tab==='map') initMap();
+    if(tab==='hotels') initHotelMap();
+    if(tab==='activities') initActivitiesMap();
+    if(tab==='transport') initTransportMap();
+    if(tab==='itinerary') initItineraryMap();
+  }
 }
 
 
