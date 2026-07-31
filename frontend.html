@@ -237,6 +237,7 @@ function screenResults(tab){
   if(tab==='hotels') initHotelMap();
   if(tab==='activities') initActivitiesMap();
   if(tab==='transport') initTransportMap();
+  if(tab==='itinerary') initItineraryMap();
 }
 
 
@@ -684,16 +685,89 @@ function tabCompare(){
 }
 function tabItinerary(){
   const its=destData.suggested_itineraries||[];
-  return `<h3 style="font-size:20px;margin-bottom:16px;">📋 Itinerarios sugeridos</h3>
-    ${its.map(it=>`<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;"><div style="font-weight:600;font-size:16px;">${it.title}</div><div style="color:#4ade80;font-weight:700;">USD ${it.total_cost_usd}</div></div>
-      <div style="margin:8px 0;"><span style="background:#1e3a5f;color:#38bdf8;padding:3px 8px;border-radius:6px;font-size:11px;">${it.days} días</span> <span style="background:#1e3a5f;color:#38bdf8;padding:3px 8px;border-radius:6px;font-size:11px;">${it.style}</span></div>
-      ${(it.daily_plan||[]).map(d=>`<div style="padding:10px 0;border-top:1px solid #334155;">
-        <div style="font-weight:600;font-size:13px;">Día ${d.day_number}: ${d.title}</div>
-        <div style="color:#94a3b8;font-size:12px;margin-top:4px;">${(d.activities||[]).join(' → ')}</div>
-        <div style="font-size:11px;color:#64748b;margin-top:4px;">💰 USD ${d.estimated_cost_usd} · 🚶 ${d.walking_km}km</div>
-      </div>`).join('')}
-    </div>`).join('')}`;
+  const plan=its[0]||{daily_plan:[]};
+  const days=plan.daily_plan||[];
+  const currentDay=window._itDay||1;
+  const dayData=days.find(d=>d.day_number===currentDay)||days[0]||{};
+  const acts=dayData.activities||[];
+
+  return `
+    <div style="display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;">
+      ${days.map(d=>`<button onclick="window._itDay=${d.day_number};screenResults('itinerary')" style="padding:8px 16px;border:1px solid ${d.day_number===currentDay?'#38bdf8':'#334155'};border-radius:8px;background:${d.day_number===currentDay?'#1e3a5f':'#1e293b'};color:${d.day_number===currentDay?'#38bdf8':'#94a3b8'};cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap;">Día ${d.day_number}</button>`).join('')}
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:280px;">
+        <h3 style="font-size:16px;margin-bottom:4px;">${plan.title||'Itinerario'}</h3>
+        <p style="color:#94a3b8;font-size:12px;margin-bottom:16px;">Día ${currentDay}: ${dayData.title||''} · 💰 USD ${dayData.estimated_cost_usd||'?'} · 🚶 ${dayData.walking_km||'?'}km</p>
+        <div style="position:relative;padding-left:24px;">
+          <div style="position:absolute;left:10px;top:0;bottom:0;width:2px;background:#334155;"></div>
+          ${acts.map((a,i)=>`
+            <div style="position:relative;margin-bottom:16px;">
+              <div style="position:absolute;left:-20px;top:4px;width:22px;height:22px;border-radius:50%;background:#38bdf8;color:#0f172a;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;">${i+1}</div>
+              <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px;">
+                <div style="font-weight:600;font-size:14px;">${a}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div style="flex:1;min-width:280px;">
+        <div id="itinerary-map" style="height:400px;border-radius:12px;position:sticky;top:100px;"></div>
+      </div>
+    </div>
+    <div style="margin-top:16px;">
+      ${its.length>1?`<h4 style="font-size:14px;color:#94a3b8;margin-bottom:12px;">Otros itinerarios disponibles:</h4>
+      ${its.slice(1).map(it=>`<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;" onclick="destData.suggested_itineraries.unshift(destData.suggested_itineraries.splice(${its.indexOf(it)},1)[0]);window._itDay=1;screenResults('itinerary')">
+        <div style="display:flex;justify-content:space-between;"><div style="font-weight:600;">${it.title}</div><div style="color:#4ade80;">USD ${it.total_cost_usd}</div></div>
+        <div style="color:#94a3b8;font-size:12px;margin-top:4px;">${it.days} días · ${it.style}</div>
+      </div>`).join('')}`:''}
+    </div>
+  `;
+}
+function initItineraryMap(){
+  const destCoords={'Tokyo':[139.6503,35.6762],'Paris':[2.3522,48.8566],'París':[2.3522,48.8566],'Bali':[115.092,-8.3405],'Rome':[12.4964,41.9028],'Roma':[12.4964,41.9028],'New York':[-74.006,40.7128],'Cancún':[-86.8515,21.1619],'Machu Picchu':[-72.545,-13.1631],'London':[-0.1278,51.5074],'Londres':[-0.1278,51.5074],'Barcelona':[2.1734,41.3851],'Bangkok':[100.5018,13.7563],'Francia':[2.3522,48.8566]};
+  const name=(destData._name||'').split(',')[0].trim();
+  const center=destCoords[name]||[2.3522,48.8566];
+  const its=destData.suggested_itineraries||[];
+  const plan=its[0]||{daily_plan:[]};
+  const days=plan.daily_plan||[];
+  const currentDay=window._itDay||1;
+  const dayData=days.find(d=>d.day_number===currentDay)||days[0]||{};
+  const acts=dayData.activities||[];
+  
+  setTimeout(()=>{
+    const el=document.getElementById('itinerary-map');
+    if(!el)return;
+    el.innerHTML='';
+    const map=new mapboxgl.Map({container:'itinerary-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:12});
+    map.on('load',()=>{
+      // Generate points around center for each activity
+      const points=acts.map((a,i)=>{
+        const angle=(i/acts.length)*Math.PI*2;
+        const radius=0.015+Math.random()*0.01;
+        return [center[0]+Math.cos(angle)*radius, center[1]+Math.sin(angle)*radius];
+      });
+      // Add numbered markers
+      points.forEach((p,i)=>{
+        const markerEl=document.createElement('div');
+        markerEl.style.cssText='width:28px;height:28px;border-radius:50%;background:#f87171;color:white;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid white;';
+        markerEl.textContent=i+1;
+        new mapboxgl.Marker({element:markerEl}).setLngLat(p).setPopup(new mapboxgl.Popup().setHTML(`<b>${i+1}. ${acts[i]}</b>`)).addTo(map);
+      });
+      // Draw route line connecting all points
+      if(points.length>1){
+        map.addSource('itinerary-route',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:points}}});
+        map.addLayer({id:'itinerary-route',type:'line',source:'itinerary-route',paint:{'line-color':'#f87171','line-width':3,'line-opacity':0.8}});
+      }
+      // Fit bounds
+      if(points.length>0){
+        const bounds=new mapboxgl.LngLatBounds();
+        points.forEach(p=>bounds.extend(p));
+        map.fitBounds(bounds,{padding:50});
+      }
+    });
+  },100);
+}
 }
 
 // ─── CHANGE ORIGIN ─────────────────────────────
