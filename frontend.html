@@ -204,12 +204,14 @@ const TABS=[
   {id:'hotels',icon:'🏨',label:'Hoteles'},
   {id:'food',icon:'🍜',label:'Comida'},
   {id:'activities',icon:'🎯',label:'Actividades'},
+  {id:'costs',icon:'💵',label:'Costos'},
   {id:'map',icon:'🗺️',label:'Mapa'},
   {id:'climate',icon:'🌤️',label:'Clima'},
   {id:'safety',icon:'🛡️',label:'Seguridad'},
   {id:'money',icon:'💰',label:'Dinero'},
   {id:'compare',icon:'📏',label:'Comparar'},
   {id:'itinerary',icon:'📋',label:'Itinerario'},
+  {id:'chat',icon:'💬',label:'Chat IA'},
 ];
 
 function screenResults(tab){
@@ -221,17 +223,26 @@ function screenResults(tab){
       <h2 style="font-size:18px;flex:1;">${name}</h2>
       <span style="color:#94a3b8;font-size:12px;">desde ${fromCity}</span>
     </div>
+    <div style="background:#0f172a;padding:8px 16px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:11px;color:#94a3b8;">💰 Presupuesto estimado:</div>
+      <div style="display:flex;gap:12px;font-size:11px;">
+        <span>✈️ <strong style="color:#38bdf8;">USD ${(destData.flights||{}).cheapest_price||'?'}</strong></span>
+        <span>🏨 <strong style="color:#818cf8;">USD ${((destData.accommodation||{}).avg_price_mid||0)*((destData.quick_stats||{}).ideal_days||5)}</strong></span>
+        <span>🎯 <strong style="color:#fbbf24;">USD ${((destData.quick_stats||{}).avg_cost_per_day_usd||0)*((destData.quick_stats||{}).ideal_days||5)}</strong></span>
+        <span style="color:#4ade80;font-weight:700;">= USD ${totalCost||'?'}</span>
+      </div>
+    </div>
     <div style="display:flex;overflow-x:auto;background:#1e293b;border-bottom:1px solid #334155;position:sticky;top:44px;z-index:999;scrollbar-width:none;" id="tabs-bar">
       ${TABS.map(t=>`<div onclick="screenResults('${t.id}')" style="padding:10px 14px;font-size:12px;cursor:pointer;white-space:nowrap;border-bottom:2px solid ${t.id===tab?'#38bdf8':'transparent'};color:${t.id===tab?'#38bdf8':'#94a3b8'};">${t.icon} ${t.label}</div>`).join('')}
     </div>
     <div style="max-width:600px;margin:0 auto;padding:16px;padding-bottom:80px;" id="tab-content"></div>
     <div style="position:fixed;bottom:0;left:0;right:0;background:#1e293b;border-top:1px solid #334155;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;z-index:1000;">
-      <div style="font-size:13px;color:#94a3b8;">Total: <strong style="color:#4ade80;font-size:18px;">USD ${totalCost.toLocaleString()}</strong></div>
+      <div style="font-size:13px;color:#94a3b8;">Total seleccionado: <strong style="color:#4ade80;font-size:18px;">USD ${(selections.flight||0).toLocaleString()}</strong></div>
       <button onclick="alert('Próximo paso: reservar. Disponible en Sprint 2.')" style="padding:10px 20px;border:none;border-radius:8px;background:linear-gradient(135deg,#38bdf8,#818cf8);color:white;font-weight:600;cursor:pointer;font-size:13px;">Armar mi viaje →</button>
     </div>
   `);
   const content=document.getElementById('tab-content');
-  const fn={overview:tabOverview,flights:tabFlights,transport:tabTransport,hotels:tabHotels,food:tabFood,activities:tabActivities,map:tabMap,climate:tabClimate,safety:tabSafety,money:tabMoney,compare:tabCompare,itinerary:tabItinerary};
+  const fn={overview:tabOverview,flights:tabFlights,transport:tabTransport,hotels:tabHotels,food:tabFood,activities:tabActivities,costs:tabCosts,map:tabMap,climate:tabClimate,safety:tabSafety,money:tabMoney,compare:tabCompare,itinerary:tabItinerary,chat:tabChat};
   if(fn[tab]) content.innerHTML=fn[tab]();
   if(tab==='map') initMap();
   if(tab==='hotels') initHotelMap();
@@ -624,6 +635,109 @@ function initMap(){
       });
     }
   },100);
+}
+
+// ─── TAB: COSTS ────────────────────────────────
+function tabCosts(){
+  const qs=destData.quick_stats||{};
+  const f=destData.flights||{};
+  const a=destData.accommodation||{};
+  const m=destData.money||{};
+  const days=qs.ideal_days||5;
+  const flightCost=selections.flight||f.cheapest_price||0;
+  const hotelCost=(a.avg_price_mid||100)*days;
+  const foodCost=(m.budget_mid_usd||50)*days*0.3;
+  const actCost=(qs.avg_cost_per_day_usd||100)*days*0.2;
+  const transportCost=(qs.avg_cost_per_day_usd||100)*days*0.1;
+  const totalTrip=flightCost+hotelCost+foodCost+actCost+transportCost;
+  
+  return `
+    <h3 style="font-size:20px;margin-bottom:16px;">💵 Costo total del viaje</h3>
+    <div style="background:#1e293b;border-radius:12px;padding:20px;text-align:center;margin-bottom:16px;">
+      <div style="font-size:36px;font-weight:700;color:#4ade80;">USD ${Math.round(totalTrip).toLocaleString()}</div>
+      <div style="color:#94a3b8;font-size:13px;margin-top:4px;">${days} días · ${destData._adults||1} adulto${(destData._adults||1)>1?'s':''} ${(destData._kids||0)>0?`+ ${destData._kids} niño${destData._kids>1?'s':''}`:''}</div>
+    </div>
+    <div style="margin-bottom:20px;">
+      ${[
+        {label:'✈️ Vuelos (ida y vuelta)',cost:flightCost,color:'#38bdf8',pct:Math.round(flightCost/totalTrip*100)},
+        {label:'🏨 Alojamiento ('+days+' noches)',cost:hotelCost,color:'#818cf8',pct:Math.round(hotelCost/totalTrip*100)},
+        {label:'🍜 Comida ('+days+' días)',cost:foodCost,color:'#fbbf24',pct:Math.round(foodCost/totalTrip*100)},
+        {label:'🎯 Actividades y entradas',cost:actCost,color:'#f87171',pct:Math.round(actCost/totalTrip*100)},
+        {label:'🚇 Transporte interno',cost:transportCost,color:'#4ade80',pct:Math.round(transportCost/totalTrip*100)},
+      ].map(item=>`
+        <div style="margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-size:13px;">${item.label}</span>
+            <span style="font-weight:600;color:${item.color};">USD ${Math.round(item.cost)} (${item.pct}%)</span>
+          </div>
+          <div style="background:#334155;border-radius:4px;height:8px;overflow:hidden;">
+            <div style="background:${item.color};height:100%;width:${item.pct}%;border-radius:4px;"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <h4 style="font-size:15px;margin-bottom:12px;">📊 Por nivel de presupuesto</h4>
+    <div style="display:flex;gap:10px;margin-bottom:16px;">
+      <div style="flex:1;background:#1e293b;border-radius:10px;padding:14px;text-align:center;border:1px solid #334155;">
+        <div style="font-size:11px;color:#94a3b8;">🎒 MOCHILERO</div>
+        <div style="font-size:18px;font-weight:700;color:#4ade80;margin-top:4px;">USD ${Math.round((m.budget_backpacker_usd||40)*days+flightCost)}</div>
+        <div style="font-size:10px;color:#64748b;">${days} días total</div>
+      </div>
+      <div style="flex:1;background:#1e293b;border-radius:10px;padding:14px;text-align:center;border:1px solid #38bdf8;">
+        <div style="font-size:11px;color:#38bdf8;">⭐ MEDIO</div>
+        <div style="font-size:18px;font-weight:700;color:#38bdf8;margin-top:4px;">USD ${Math.round(totalTrip)}</div>
+        <div style="font-size:10px;color:#64748b;">${days} días total</div>
+      </div>
+      <div style="flex:1;background:#1e293b;border-radius:10px;padding:14px;text-align:center;border:1px solid #334155;">
+        <div style="font-size:11px;color:#94a3b8;">💎 LUJO</div>
+        <div style="font-size:18px;font-weight:700;color:#818cf8;margin-top:4px;">USD ${Math.round((m.budget_luxury_usd||300)*days+flightCost*1.5)}</div>
+        <div style="font-size:10px;color:#64748b;">${days} días total</div>
+      </div>
+    </div>
+    <div style="background:#1e293b;border-radius:10px;padding:14px;font-size:12px;color:#94a3b8;">
+      💡 Estos son estimados basados en promedios. Los precios reales dependen de temporada, anticipación de reserva y estilo de viaje.
+    </div>
+  `;
+}
+
+// ─── TAB: CHAT ─────────────────────────────────
+let chatHistory=[];
+function tabChat(){
+  return `
+    <h3 style="font-size:20px;margin-bottom:16px;">💬 Preguntale a la IA</h3>
+    <p style="color:#94a3b8;font-size:13px;margin-bottom:16px;">Preguntá lo que quieras sobre ${(destData._name||'').split(',')[0]}. Ejemplos: "¿Qué hago si llueve?", "Cambiame la tarde del día 2", "¿Dónde como barato?"</p>
+    <div id="chat-messages" style="max-height:300px;overflow-y:auto;margin-bottom:16px;">
+      ${chatHistory.map(m=>`
+        <div style="margin-bottom:12px;display:flex;flex-direction:column;align-items:${m.role==='user'?'flex-end':'flex-start'};">
+          <div style="background:${m.role==='user'?'#1e3a5f':'#1e293b'};border:1px solid ${m.role==='user'?'#38bdf8':'#334155'};border-radius:12px;padding:10px 14px;max-width:85%;font-size:13px;">
+            ${m.content}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="display:flex;gap:8px;">
+      <input id="chat-input" type="text" placeholder="Escribí tu pregunta..." style="flex:1;padding:12px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:white;font-size:14px;outline:none;" onkeypress="if(event.key==='Enter')sendChat()">
+      <button onclick="sendChat()" style="padding:12px 16px;border:none;border-radius:10px;background:#38bdf8;color:white;font-weight:600;cursor:pointer;">Enviar</button>
+    </div>
+  `;
+}
+async function sendChat(){
+  const input=document.getElementById('chat-input');
+  const msg=input.value.trim();
+  if(!msg) return;
+  chatHistory.push({role:'user',content:msg});
+  input.value='';
+  screenResults('chat');
+  
+  try{
+    const r=await fetch(`${API}/api/v1/chat`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({trip_id:'00000000-0000-0000-0000-000000000001',message:`Sobre mi viaje a ${destData._name}: ${msg}`})});
+    const d=await r.json();
+    chatHistory.push({role:'assistant',content:d.answer||'No pude responder'});
+    screenResults('chat');
+  }catch(e){
+    chatHistory.push({role:'assistant',content:'Error de conexión. Intentá de nuevo.'});
+    screenResults('chat');
+  }
 }
 
 // ─── TABS: CLIMATE, SAFETY, MONEY, COMPARE, ITINERARY ─
