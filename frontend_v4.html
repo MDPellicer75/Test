@@ -24,6 +24,18 @@ if(TK&&typeof mapboxgl!=='undefined'){mapboxgl.accessToken=TK;localStorage.setIt
 
 function render(h){document.getElementById('app').innerHTML=h;}
 
+// Get map center from AI data (activities/hotels coords) with fallback to known cities
+function getDestCenter(){
+  var known={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16],'Londres':[-0.12,51.5],'London':[-0.12,51.5],'Barcelona':[2.17,41.38],'Madrid':[-3.70,40.41],'Curacao':[-68.99,12.16],'Curazao':[-68.99,12.16]};
+  var name=(destData._name||'').split(',')[0].trim();
+  if(known[name]) return known[name];
+  var acts=(destData.activities||{}).must_do||[];
+  for(var i=0;i<acts.length;i++){if(acts[i].latitude&&acts[i].longitude) return [acts[i].longitude,acts[i].latitude];}
+  var hotels=(destData.accommodation||{}).hotels||[];
+  for(var j=0;j<hotels.length;j++){if(hotels[j].latitude&&hotels[j].longitude) return [hotels[j].longitude,hotels[j].latitude];}
+  return [0,20];
+}
+
 function screenLogin(err){
   render(`<div style="max-width:400px;margin:60px auto;padding:20px;">
     <div style="text-align:center;margin-bottom:30px;"><h1 style="font-size:32px;background:linear-gradient(90deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">TravelOS</h1><p style="color:#94a3b8;margin-top:5px;">Tu copiloto de viaje con IA</p></div>
@@ -136,9 +148,8 @@ function initHotelMap(){
   if(typeof mapboxgl==='undefined') return;
   var el=document.getElementById('hotel-map');
   if(!el) return;
-  var destCoords={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16]};
   var name=(destData._name||'').split(',')[0].trim();
-  var center=destCoords[name]||[2.35,48.85];
+  var center=getDestCenter();
   hotelMapInstance=new mapboxgl.Map({container:'hotel-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:13});
   hotelMapInstance.on('load',function(){
     var hotels=(destData.accommodation||{}).hotels||[];
@@ -262,9 +273,8 @@ function initActMap(){
   if(typeof mapboxgl==='undefined') return;
   var el=document.getElementById('act-map');
   if(!el) return;
-  var destCoords={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16]};
   var name=(destData._name||'').split(',')[0].trim();
-  var center=destCoords[name]||[2.35,48.85];
+  var center=getDestCenter();
   actMapInstance=new mapboxgl.Map({container:'act-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:12});
   actMapInstance.on('load',function(){
     var acts=(destData.activities||{}).must_do||[];
@@ -305,10 +315,9 @@ function initMap(){
   if(typeof mapboxgl==='undefined') return;
   var el=document.getElementById('mapview');
   if(!el) return;
-  var destCoords={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16],'Londres':[-0.12,51.5],'Barcelona':[2.17,41.38]};
   var fromCoords={'Buenos Aires':[-58.38,-34.6],'Córdoba':[-64.18,-31.42],'Rosario':[-60.63,-32.94],'Madrid':[-3.7,40.41],'Miami':[-80.19,25.76]};
   var name=(destData._name||'').split(',')[0].trim();
-  var dest=destCoords[name]||[2.35,48.85];
+  var dest=getDestCenter();
   var origin=fromCoords[fromCity]||[-58.38,-34.6];
 
   if(mapMode==='flight'){
@@ -403,9 +412,8 @@ function initTransportMap(){
   if(typeof mapboxgl==='undefined') return;
   var el=document.getElementById('transport-map');
   if(!el) return;
-  var destCoords={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16]};
   var name=(destData._name||'').split(',')[0].trim();
-  var center=destCoords[name]||[2.35,48.85];
+  var center=getDestCenter();
   var airport=[center[0]+0.12,center[1]+0.04];
   transportMapInstance=new mapboxgl.Map({container:'transport-map',style:'mapbox://styles/mapbox/dark-v11',center:center,zoom:11});
   transportMapInstance.on('load',function(){
@@ -525,9 +533,8 @@ function initItineraryMap(){
   if(typeof mapboxgl==='undefined') return;
   var el=document.getElementById('itin-map');
   if(!el) return;
-  var destCoords={'Tokyo':[139.65,35.67],'Paris':[2.35,48.85],'New York':[-74.0,40.71],'Rome':[12.49,41.9],'Bali':[115.09,-8.34],'Cancun':[-86.85,21.16]};
   var name=(destData._name||'').split(',')[0].trim();
-  var center=destCoords[name]||[2.35,48.85];
+  var center=getDestCenter();
   var its=destData.suggested_itineraries||[];
   var plan=its[itinIndex||0]||{daily_plan:[]};
   var days=plan.daily_plan||[];
