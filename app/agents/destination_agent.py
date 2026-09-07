@@ -412,6 +412,7 @@ Generá un JSON con 10 hoteles NUEVOS (que NO estén en la lista anterior):
 REGLAS:
 - Hoteles REALES con coordenadas reales
 - Incluí desde hostels USD 15/noche hasta 5 estrellas USD 600+/noche
+- OBLIGATORIO incluir de cada tipo: al menos 2 "hotel", 2 "apartment", 1 "hostel", 1 "boutique", 1 "luxury"
 - Variedad de zonas y tipos
 - Respondé SOLO JSON"""
         return await self._call_ai_json(prompt)

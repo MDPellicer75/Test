@@ -80,6 +80,10 @@ function screenHome(){
   <div style="max-width:600px;margin:0 auto;padding:20px;">
     <div style="position:relative;"><input id="dest-input" type="text" placeholder="A donde queres ir?" style="width:100%;padding:16px 16px 16px 45px;border:1px solid #334155;border-radius:12px;background:#0f172a;color:white;font-size:18px;outline:none;" onkeypress="if(event.key==='Enter')doExplore()"><span style="position:absolute;left:15px;top:16px;font-size:20px;">🌍</span></div>
     <div style="display:flex;gap:10px;margin-top:12px;">
+      <div style="flex:1;"><label style="color:#94a3b8;font-size:11px;">📅 Ida</label><input id="sel-from-date" type="date" style="width:100%;padding:10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:white;font-size:13px;margin-top:4px;"></div>
+      <div style="flex:1;"><label style="color:#94a3b8;font-size:11px;">📅 Vuelta</label><input id="sel-to-date" type="date" style="width:100%;padding:10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:white;font-size:13px;margin-top:4px;"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px;">
       <div style="flex:1;"><label style="color:#94a3b8;font-size:11px;">Adultos</label><select id="sel-adults" style="width:100%;padding:10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:white;font-size:14px;margin-top:4px;"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="4">4</option></select></div>
       <div style="flex:1;"><label style="color:#94a3b8;font-size:11px;">Niños</label><select id="sel-kids" style="width:100%;padding:10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:white;font-size:14px;margin-top:4px;"><option value="0" selected>0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
       <div style="flex:1;"><label style="color:#94a3b8;font-size:11px;">Clase</label><select id="sel-class" style="width:100%;padding:10px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:white;font-size:14px;margin-top:4px;"><option value="economy">Económica</option><option value="business">Business</option><option value="first">Primera</option></select></div>
@@ -96,12 +100,22 @@ function screenHome(){
   </div>`);
 }
 
+var tripDates={from:'',to:'',days:5};
 async function doExplore(dest){
   const destination=dest||document.getElementById('dest-input').value;
   if(!destination) return;
-  render('<div style="text-align:center;padding:100px 20px;"><div style="width:50px;height:50px;border:4px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 20px;"></div><h3>Analizando '+destination+'...</h3><p style="color:#94a3b8;margin-top:10px;">Buscando info desde '+fromCity+'</p><style>@keyframes spin{to{transform:rotate(360deg)}}</style></div>');
+  // Capture dates + passengers
+  var fromDate=document.getElementById('sel-from-date')?document.getElementById('sel-from-date').value:'';
+  var toDate=document.getElementById('sel-to-date')?document.getElementById('sel-to-date').value:'';
+  var adults=document.getElementById('sel-adults')?document.getElementById('sel-adults').value:'2';
+  var kids=document.getElementById('sel-kids')?document.getElementById('sel-kids').value:'0';
+  var flightClass=document.getElementById('sel-class')?document.getElementById('sel-class').value:'economy';
+  var days=5;
+  if(fromDate&&toDate){days=Math.max(1,Math.round((new Date(toDate)-new Date(fromDate))/86400000));}
+  tripDates={from:fromDate,to:toDate,days:days,adults:adults,kids:kids,cls:flightClass};
+  render('<div style="text-align:center;padding:100px 20px;"><div style="width:50px;height:50px;border:4px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 20px;"></div><h3>Analizando '+destination+'...</h3><p style="color:#94a3b8;margin-top:10px;">Buscando info desde '+fromCity+' · '+days+' días · '+adults+' adulto(s)</p><style>@keyframes spin{to{transform:rotate(360deg)}}</style></div>');
   try{
-    const r=await fetch(API+'/api/v1/destinations/explore',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({destination:destination,from_city:fromCity,travelers:1,budget_usd:2500})});
+    const r=await fetch(API+'/api/v1/destinations/explore',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({destination:destination,from_city:fromCity,travelers:parseInt(adults)+parseInt(kids),budget_usd:2500})});
     if(r.status===401){screenLogin('Sesión expirada');return;}
     destData=await r.json();
     destData._name=destination;
@@ -116,7 +130,8 @@ function showResults(tab){
   const icons=['📊','✈️','🚇','🏨','🎯','📋','🗺️','💵','🌤️','🛡️'];
   const labels=['Resumen','Vuelos','Transporte','Hoteles','Actividades','Itinerario','Mapa','Costos','Clima','Seguridad'];
   
-  let header='<div style="background:#1e293b;padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #334155;"><span onclick="screenHome()" style="cursor:pointer;font-size:20px;">←</span><h2 style="font-size:18px;flex:1;">'+name+'</h2><span style="color:#94a3b8;font-size:12px;">desde '+fromCity+'</span></div>';
+  var dateStr=(tripDates.from&&tripDates.to)?tripDates.from+' → '+tripDates.to+' ('+tripDates.days+'d)':tripDates.days+' días';
+  let header='<div style="background:#1e293b;padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #334155;"><span onclick="screenHome()" style="cursor:pointer;font-size:20px;">←</span><div style="flex:1;"><h2 style="font-size:18px;">'+name+'</h2><div style="color:#94a3b8;font-size:11px;">📅 '+dateStr+' · 👤 '+(tripDates.adults||2)+' adulto(s)'+((tripDates.kids&&tripDates.kids>0)?' + '+tripDates.kids+' niño(s)':'')+' · desde '+fromCity+'</div></div></div>';
   let tabsHtml='<div style="display:flex;overflow-x:auto;background:#1e293b;border-bottom:1px solid #334155;scrollbar-width:none;">';
   for(let i=0;i<tabs.length;i++){
     const active=tabs[i]===tab;
@@ -201,8 +216,15 @@ function tabHotels(){
     h+='<div onclick="loadZoneHotels(\''+z.name.replace(/'/g,"\\'")+'\','+JSON.stringify([z.avg_price_per_night_usd||0]).replace(/"/g,'&quot;')+')" style="background:#1e293b;border:1px solid '+(selectedZone===z.name?'#fbbf24':'#334155')+';border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;" onmouseover="this.style.borderColor=\'#fbbf24\'" onmouseout="this.style.borderColor=\''+(selectedZone===z.name?'#fbbf24':'#334155')+'\'"><div style="display:flex;justify-content:space-between;align-items:center;"><div><div style="font-weight:600;">'+z.name+'</div><div style="color:#94a3b8;font-size:12px;margin-top:2px;">'+z.description+'</div></div><div style="text-align:right;"><div style="color:#4ade80;font-weight:700;">USD '+z.avg_price_per_night_usd+'/n</div><div style="color:#fbbf24;font-size:11px;">Ver hoteles →</div></div></div></div>';
   });
   var filtered=hotels;
-  if(hotelTypeFilter!=='Todos'){filtered=hotels.filter(function(ho){var t=(ho.type||'').toLowerCase();var f=hotelTypeFilter.toLowerCase();return t.indexOf(f)>-1||f.indexOf(t)>-1||t.indexOf(f.substring(0,4))>-1;});
-  if(filtered.length===0){filtered=hotels;}}
+  var noMatch=false;
+  if(hotelTypeFilter!=='Todos'){
+    var f=hotelTypeFilter.toLowerCase();
+    filtered=hotels.filter(function(ho){var t=(ho.type||'').toLowerCase();return t.indexOf(f)>-1||f.indexOf(t)>-1||t.indexOf(f.substring(0,4))>-1;});
+    if(filtered.length===0&&hotels.length>0){noMatch=true;filtered=[];}
+  }
+  if(noMatch){
+    h+='<div style="background:#713f12;border-radius:10px;padth:14px;padding:14px;margin-top:12px;font-size:13px;color:#fbbf24;">No hay "'+hotelTypeFilter+'" entre los '+hotels.length+' hoteles cargados. Tocá una zona arriba para cargar más opciones, o elegí "Todos".</div>';
+  }
   if(filtered.length>0){
     h+='<h4 style="font-size:15px;margin:16px 0 12px;">🏨 Hoteles cargados ('+filtered.length+' de '+hotels.length+'):</h4>';
     filtered.forEach(function(ho,idx){
